@@ -1,0 +1,1 @@
+# Fixtures compartilhados — implementar.

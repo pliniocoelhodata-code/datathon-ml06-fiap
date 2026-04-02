@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.coverage
+coverage.xml
+htmlcov/
+
+# Ambiente
+.env
+.venv/
+venv/
+
+# Dados e artefatos
+data/raw/*
+!data/raw/.gitkeep
+mlruns/
+*.db
+
+# DVC
+/dvc.lock
+
+# IDE
+.idea/
+.vscode/
+
+# Notebooks
+.ipynb_checkpoints/

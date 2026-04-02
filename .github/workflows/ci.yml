@@ -1,0 +1,16 @@
+name: Datathon CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  estrutura:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar estrutura do repositório
+        run: |
+          test -d src/features && test -d src/models && test -d src/agent
+          test -d src/serving && test -d src/monitoring && test -d src/security
+          test -d tests && test -d evaluation && test -d docs && test -d configs
