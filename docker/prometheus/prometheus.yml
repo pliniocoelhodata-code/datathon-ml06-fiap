@@ -1,0 +1,17 @@
+# Configuração de scrape do Prometheus — ajuste os targets conforme sua API.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["prometheus:9090"]
+
+  # FastAPI + prometheus-client em /metrics (rodando no host, ex.: uvicorn na porta 8000).
+  # Quando a API estiver no mesmo docker-compose, troque o target para "api:8000" e remova extra_hosts.
+  - job_name: fastapi
+    metrics_path: /metrics
+    scrape_interval: 10s
+    static_configs:
+      - targets: ["host.docker.internal:8000"]
