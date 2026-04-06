@@ -1,2 +1,12 @@
 # Hiperparâmetros — implementar
-{}
+model:
+  name: "lstm_baseline_v1"
+  window_size: 120
+  epochs: 50
+  batch_size: 32
+  learning_rate: 0.001
+
+data:
+  symbol: "DIS"
+  raw_path: "data/raw/stock_data.csv"
+  test_size: 0.2

@@ -17,14 +17,23 @@ htmlcov/
 .venv/
 venv/
 
-# Dados e artefatos
-data/raw/*
-!data/raw/.gitkeep
+# MLflow e Experimentos
 mlruns/
-*.db
+mlflow.db
 
-# DVC
-/dvc.lock
+# Artefatos de Modelos e Imagens geradas
+models/*.keras
+models/*.pkl
+models/images/
+
+# Ignora os arquivos de dados reais, mas permite as pastas e arquivos .dvc
+data/raw/*.csv
+data/processed/*.csv
+data/golden_set/*.csv
+
+# Garante que arquivos de controle do DVC NUNCA sejam ignorados
+!*.dvc
+!dvc.lock
 
 # IDE
 .idea/

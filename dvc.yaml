@@ -1,2 +1,15 @@
 # Pipeline DVC — implementar estágios
-stages: {}
+stages:
+  train_baseline:
+    cmd: python -m src.models.baseline
+    deps:
+      - data/raw/stock_data.csv
+      - src/models/baseline.py
+    metrics:
+      - mlruns/
+  train_lstm:
+    cmd: python -m src.models.train
+    deps:
+      - data/raw/stock_data.csv
+      - src/models/train.py
+      - src/features/feature_engineering.py
