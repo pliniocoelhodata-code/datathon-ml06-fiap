@@ -1,0 +1,142 @@
+[
+    {
+      "id": 1,
+      "category": "Análise Técnica",
+      "query": "PETR4 fechou a R$ 38,50 com IFR em 25 e volume alto. Qual a previsão para amanhã?",
+      "expected_answer": "Espera-se uma correção de alta ou repique técnico, dado que o ativo entrou em zona de sobrevenda (IFR < 30), sugerindo exaustão vendedora.",
+      "context": "Indicadores de momentum e volume financeiro."
+    },
+    {
+      "id": 2,
+      "category": "Análise Fundamentalista",
+      "query": "VALE3 anunciou dividendos extraordinários de R$ 2,50 por ação após o pregão. Como o mercado deve reagir amanhã?",
+      "expected_answer": "Forte tendência de alta na abertura (gap de alta) devido à atratividade do dividend yield imediato para os investidores.",
+      "context": "Fatos relevantes e política de remuneração aos acionistas."
+    },
+    {
+      "id": 3,
+      "category": "Macroeconomia",
+      "query": "O FOMC (Fed) sinalizou manutenção dos juros nos EUA, mas com tom 'hawkish'. Qual o impacto nas stocks de tecnologia (ex: NVDA) amanhã?",
+      "expected_answer": "Pressão negativa ou lateralização. Juros altos por mais tempo reduzem o valor presente de fluxos de caixa futuros de empresas de crescimento.",
+      "context": "Decisões de política monetária do Federal Reserve."
+    },
+    {
+      "id": 4,
+      "category": "Commodities",
+      "query": "O minério de ferro subiu 4% em Dalian (China) esta madrugada. O que esperar de VALE3 e CSNA3?",
+      "expected_answer": "Expectativa de valorização para amanhã, dado que a receita dessas empresas é diretamente correlacionada ao preço da commodity.",
+      "context": "Cotação internacional de commodities metálicas."
+    },
+    {
+      "id": 5,
+      "category": "Eventos Corporativos",
+      "query": "Rumores de fusão entre AZUL4 e GOLL4 foram confirmados por fontes do setor. Qual a previsão para o setor aéreo amanhã?",
+      "expected_answer": "Alta volatilidade com viés de alta para a empresa compradora e disparada das ações da empresa alvo devido ao prêmio de controle.",
+      "context": "M&A (Fusões e Aquisições) no mercado de capitais."
+    },
+    {
+      "id": 6,
+      "category": "Análise Técnica",
+      "query": "ITUB4 formou um padrão de 'Engolfo de Baixa' no gráfico diário após tocar a resistência de R$ 35,00. Qual a tendência?",
+      "expected_answer": "Início de um movimento de correção ou reversão para o suporte anterior, indicando que a força vendedora superou a compradora no topo.",
+      "context": "Padrões de candlestick e suportes/resistências."
+    },
+    {
+      "id": 7,
+      "category": "Macroeconomia",
+      "query": "O IPCA veio acima do esperado pelo mercado (0,60% vs 0,45%). Como isso afeta o setor de construção civil (ex: CYRE3) amanhã?",
+      "expected_answer": "Impacto negativo, pois inflação alta sugere manutenção ou alta da Selic, elevando o custo do financiamento imobiliário.",
+      "context": "Indicadores de inflação e sensibilidade a juros."
+    },
+    {
+      "id": 8,
+      "category": "Sentimento de Mercado",
+      "query": "Houve um ataque hacker confirmado aos sistemas da WEGE3. O que esperar do papel no curto prazo?",
+      "expected_answer": "Queda imediata por risco de governança e interrupção operacional, com investidores buscando proteção até a mensuração dos danos.",
+      "context": "Gestão de crise e riscos cibernéticos."
+    },
+    {
+      "id": 9,
+      "category": "Análise Fundamentalista",
+      "query": "O balanço da MGLU3 reportou prejuízo líquido e queima de caixa maior que o esperado. Como as ações devem abrir amanhã?",
+      "expected_answer": "Abertura em queda acentuada, refletindo a deterioração dos fundamentos operacionais e falta de visibilidade de lucro.",
+      "context": "Resultados trimestrais (Earnings reports)."
+    },
+    {
+      "id": 10,
+      "category": "Macroeconomia",
+      "query": "O dólar subiu 2% frente ao real hoje. Qual o impacto esperado para a SUZB3 amanhã?",
+      "expected_answer": "Tendência de alta, pois a Suzano é uma exportadora com receita dolarizada e custos majoritariamente em reais.",
+      "context": "Variação cambial e impacto em empresas exportadoras."
+    },
+    {
+      "id": 11,
+      "category": "Análise Técnica",
+      "query": "BBAS3 rompeu a média móvel de 200 períodos para cima com volume expressivo. Qual o sinal técnico?",
+      "expected_answer": "Sinal de reversão de tendência de longo prazo para alta (Bullish), indicando entrada de fluxo institucional comprador.",
+      "context": "Médias móveis de longo prazo."
+    },
+    {
+      "id": 12,
+      "category": "Setorial - Bancos",
+      "query": "O Banco Central anunciou novas regras que aumentam o compulsório bancário. Qual o impacto para ITUB4 e BBDC4 amanhã?",
+      "expected_answer": "Viés de baixa, pois a medida reduz a liquidez disponível para empréstimos e pode afetar a margem financeira dos bancos.",
+      "context": "Regulamentação bancária e política monetária."
+    },
+    {
+      "id": 13,
+      "category": "Análise Fundamentalista",
+      "query": "A BBSE3 anunciou um payout de 90%. O que isso significa para o preço da ação amanhã?",
+      "expected_answer": "Reação positiva do mercado, valorizando a ação pela alta distribuição de lucro líquido aos acionistas em forma de proventos.",
+      "context": "Índice de Payout e dividendos."
+    },
+    {
+      "id": 14,
+      "category": "Commodities",
+      "query": "O Brent (petróleo) caiu 5% devido ao aumento dos estoques nos EUA. Qual o impacto em PRIO3 e RECV3 amanhã?",
+      "expected_answer": "Expectativa de queda, acompanhando a desvalorização do ativo principal que compõe a receita das operadoras independentes.",
+      "context": "Mercado internacional de energia."
+    },
+    {
+      "id": 15,
+      "category": "Macroeconomia",
+      "query": "O PIB do Brasil cresceu acima do esperado no último trimestre. Qual o impacto geral no Ibovespa amanhã?",
+      "expected_answer": "Viés otimista, sugerindo maior atividade econômica e potencial melhora nos lucros corporativos das empresas domésticas.",
+      "context": "Crescimento econômico e atividade nacional."
+    },
+    {
+      "id": 16,
+      "category": "Análise Técnica",
+      "query": "Houve um 'Dead Cross' (cruzamento da MM50 abaixo da MM200) no gráfico de ABEV3. O que isso indica?",
+      "expected_answer": "Alerta de tendência de baixa persistente no médio/longo prazo, frequentemente usado como sinal de venda por analistas gráficos.",
+      "context": "Cruzamento de médias móveis (Dead Cross)."
+    },
+    {
+      "id": 17,
+      "category": "Setorial - Varejo",
+      "query": "A Amazon anunciou expansão agressiva de logística no Brasil. Como o mercado deve precificar MELI34 amanhã?",
+      "expected_answer": "Aumento de volatilidade por receio de concorrência e pressão em margens, mesmo que o Mercado Livre seja o líder atual.",
+      "context": "Cenário competitivo e market share."
+    },
+    {
+      "id": 18,
+      "category": "Sentimento de Mercado",
+      "query": "O CEO da ELET3 renunciou subitamente por motivos pessoais. Qual a reação esperada amanhã?",
+      "expected_answer": "Incerteza e queda inicial devido à instabilidade na gestão e dúvidas sobre a continuidade do plano estratégico.",
+      "context": "Mudanças na alta administração (C-Level)."
+    },
+    {
+      "id": 19,
+      "category": "Análise Fundamentalista",
+      "query": "A margem Ebitda da RENT3 veio 300 bps acima do consenso. Qual a previsão para amanhã?",
+      "expected_answer": "Forte alta, pois a eficiência operacional surpreendeu positivamente, indicando melhor controle de custos e rentabilidade.",
+      "context": "Indicadores de rentabilidade e eficiência."
+    },
+    {
+      "id": 20,
+      "category": "Mercado Externo",
+      "query": "O índice S&P 500 fechou em queda de 3% após dados de inflação nos EUA. Como o Ibovespa deve abrir amanhã?",
+      "expected_answer": "Abertura em queda acompanhando o mau humor global e a aversão ao risco (risk-off) nos mercados emergentes.",
+      "context": "Correlação entre mercados globais."
+    }
+  ]
