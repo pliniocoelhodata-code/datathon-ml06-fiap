@@ -10,6 +10,8 @@ services:
     env_file:
       - path: .env
         required: false
+    volumes:
+      - ./.data:/app/.data
     networks:
       - observability
     healthcheck:

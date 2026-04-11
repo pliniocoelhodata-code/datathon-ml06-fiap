@@ -1,36 +1,256 @@
+# Formato Grafana Unified Alerting (não é YAML do Prometheus Alertmanager).
+# Datasource Prometheus: uid definido em provisioning/datasources/prometheus.yml
 apiVersion: 1
 
 groups:
-  - name: DatathonAlerts
+  - orgId: 1
+    name: DatathonAlerts
+    folder: Datathon
+    interval: 1m
     rules:
-      # 1. Alerta de Drift Crítico
-      - alert: CriticalModelDrift
-        expr: model_drift_share > 0.2
+      - uid: critical_model_drift
+        title: Critical model drift
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: model_drift_share > 0.2
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: []
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - B
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
         for: 5m
+        annotations:
+          summary: Drift detectado no modelo de Stocks
+          description: O share de drift ultrapassou o limite de 0.2 (PSI > 0.2).
         labels:
           severity: critical
           team: ml-ops
-        annotations:
-          summary: "Drift detectado no modelo de Stocks"
-          description: "O share de drift ultrapassou o limite de 0.2 (PSI > 0.2). O modelo pode estar degradando e um retreino automático pode ser necessário."
+        isPaused: false
 
-      # 2. Alerta de Latência de Predição
-      - alert: HighPredictionLatency
-        expr: rate(prediction_duration_seconds_sum[5m]) / rate(prediction_duration_seconds_count[5m]) > 2
+      - uid: high_prediction_latency
+        title: High prediction latency
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: |
+                rate(prediction_duration_seconds_sum[5m]) / rate(prediction_duration_seconds_count[5m]) > 2
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: []
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - B
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
         for: 2m
+        annotations:
+          summary: Latência de predição elevada
+          description: Média de latência acima de 2 segundos.
         labels:
           severity: warning
           team: platform-eng
-        annotations:
-          summary: "Latência de predição elevada"
-          description: "A média de latência das predições está acima de 2 segundos. Verifique o uso de recursos do container."
+        isPaused: false
 
-      # 3. Alerta de Taxa de Erros na API
-      - alert: HighPredictionErrorRate
-        expr: (rate(prediction_requests_total{status!="success"}[5m]) / rate(prediction_requests_total[5m])) * 100 > 10
+      - uid: high_prediction_error_rate
+        title: High prediction error rate
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              datasource:
+                type: prometheus
+                uid: prometheus
+              editorMode: code
+              expr: |
+                (rate(prediction_requests_total{status!="success"}[5m]) / rate(prediction_requests_total[5m])) * 100 > 10
+              instant: true
+              intervalMs: 1000
+              legendFormat: __auto
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params: []
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - B
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              conditions:
+                - evaluator:
+                    params:
+                      - 0
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params:
+                      - C
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource:
+                type: __expr__
+                uid: __expr__
+              expression: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+        noDataState: NoData
+        execErrState: Error
         for: 1m
+        annotations:
+          summary: Taxa de erro da API acima de 10%
+          description: O endpoint /predict está retornando erros em volume anormal.
         labels:
           severity: critical
-        annotations:
-          summary: "Taxa de erro da API acima de 10%"
-          description: "O endpoint /predict está retornando erros 4xx/5xx em volume anormal."
+        isPaused: false

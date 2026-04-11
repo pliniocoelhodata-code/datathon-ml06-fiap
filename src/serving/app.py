@@ -1,11 +1,24 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from prometheus_client import make_asgi_app
 from src.serving.api import auth, predict, user
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from src.serving.core.database import Base, engine
+    from src.serving.models.user import User  # noqa: F401 — registra modelo no metadata
+
+    Base.metadata.create_all(bind=engine)
+    yield
+
+
 app = FastAPI(
     title="Stock Price Prediction API",
     description="API for predicting stock prices using LSTM model.",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 metrics_app = make_asgi_app()
