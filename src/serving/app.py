@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from prometheus_client import make_asgi_app
 from src.serving.api import auth, predict, user
 
 app = FastAPI(
@@ -7,6 +8,13 @@ app = FastAPI(
     version="1.0.0"
 )
 
+metrics_app = make_asgi_app()
+
+# 2. Montagem do endpoint /metrics
+# O Prometheus irá ler os dados deste caminho conforme configurado no prometheus.yml
+app.mount("/metrics", metrics_app)
+
+# Registro de Rotas
 app.include_router(
     auth.router, 
     prefix="/api/v1",
@@ -26,7 +34,7 @@ app.include_router(
 @app.get("/health")
 def health_check():
     """
-    Endpoint de health check para monitoramento.
+    Endpoint de health check para monitoramento (Etapa 3).
     """
     return {
         "status": "healthy",
