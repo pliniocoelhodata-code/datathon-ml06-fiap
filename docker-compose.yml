@@ -71,7 +71,10 @@ services:
       GF_SERVER_ROOT_URL: ${GRAFANA_ROOT_URL:-http://localhost:3000}
     volumes:
       - grafana_data:/var/lib/grafana
-      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./docker/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      # dashboards.yml + json/main_dashboard.json (provisioning de painéis)
+      - ./docker/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./docker/grafana/provisioning/alerting:/etc/grafana/provisioning/alerting:ro
     ports:
       - "3000:3000"
     networks:

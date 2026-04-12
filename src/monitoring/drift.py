@@ -9,7 +9,8 @@ from evidently.metric_preset import DataDriftPreset
 from evidently.report import Report
 from prometheus_client import Gauge
 
-from src.monitoring.logging_config import setup_logging
+from src.common.logging_setup import setup_logging
+
 logger = setup_logging(__name__)
 
 # Gauge para monitorar a proporção de colunas com drift no Grafana
@@ -55,6 +56,14 @@ def _extract_drift_share(drift_dict: dict[str, Any]) -> float | None:
         if isinstance(result, dict) and "share_of_drifted_columns" in result:
             return float(result["share_of_drifted_columns"])
     return None
+
+
+def drift_report_to_dict(report: Report) -> dict[str, Any]:
+    return report.as_dict()
+
+
+def share_of_drifted_columns(drift_dict: dict[str, Any]) -> float | None:
+    return _extract_drift_share(drift_dict)
 
 def save_drift_report_html(report: Report, path: str | Path) -> Path:
     """Grava o relatório em HTML e loga o evento para auditoria."""
