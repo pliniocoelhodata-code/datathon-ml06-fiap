@@ -1,5 +1,3 @@
-# Formato Grafana Unified Alerting (não é YAML do Prometheus Alertmanager).
-# Datasource Prometheus: uid definido em provisioning/datasources/prometheus.yml
 apiVersion: 1
 
 groups:

@@ -1,9 +1,64 @@
 services:
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v3.11.1-full
+    container_name: datathon-mlflow
+    ports:
+      - "${MLFLOW_PORT:-5000}:5000"
+    volumes:
+      - mlflow_data:/mlflow
+    working_dir: /mlflow
+    entrypoint: []
+    # "*" desliga a validação de Host (rede Docker usa hostname do serviço, ex.: mlflow:5000).
+    environment:
+      MLFLOW_SERVER_ALLOWED_HOSTS: "*"
+    command:
+      - mlflow
+      - server
+      - --host=0.0.0.0
+      - --port=5000
+      - --backend-store-uri=sqlite:///mlflow.db
+      - --default-artifact-root=/mlflow/artifacts
+      - --serve-artifacts
+      - "--allowed-hosts=*"
+    networks:
+      - observability
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/')"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  train:
+    build:
+      context: .
+      dockerfile: src/models/Dockerfile
+    image: datathon-train-models
+    pull_policy: build
+    container_name: datathon-train-models
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ./data:/app/data
+    networks:
+      - observability
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    restart: "no"
+
   api:
     build:
       context: .
       dockerfile: src/serving/Dockerfile
     image: datathon-predict-api
+    pull_policy: build
     container_name: datathon-predict-api
     ports:
       - "${API_PORT:-8000}:8000"
@@ -14,6 +69,9 @@ services:
       - ./.data:/app/.data
     networks:
       - observability
+    depends_on:
+      train:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 15s
@@ -87,6 +145,7 @@ services:
 volumes:
   prometheus_data:
   grafana_data:
+  mlflow_data:
 
 networks:
   observability:

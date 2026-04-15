@@ -4,7 +4,10 @@ import os
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 def evaluate_model(model, X_test, y_test, scaler):
-    predictions = model.predict(X_test)
+    predictions = np.asarray(model.predict(X_test))
+    # sklearn regressors retornam (n,); Keras costuma retornar (n, 1). MinMaxScaler exige 2D.
+    if predictions.ndim == 1:
+        predictions = predictions.reshape(-1, 1)
     y_test_real = scaler.inverse_transform(y_test.reshape(-1, 1))
     predictions_real = scaler.inverse_transform(predictions)
     

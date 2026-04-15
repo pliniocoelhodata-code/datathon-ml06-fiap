@@ -29,16 +29,23 @@ Este projeto utiliza um `Makefile` para padronizar as tarefas de desenvolvimento
 
 ## 📊 Observabilidade (Docker)
 
-A infraestrutura de monitoramento é essencial para evitar o Gap de ausência de monitoramento de modelos. Utilizamos Prometheus e Grafana para telemetria e dashboards.
+A infraestrutura de monitoramento é essencial para evitar o Gap de ausência de monitoramento de modelos. Utilizamos Prometheus e Grafana para telemetria e dashboards, e **MLflow** para tracking de experimentos.
 
 Na raiz do repositório, com Docker e Docker Compose instalados:
 
 1. **Configuração**: Copie as variáveis de ambiente: `cp .env.example .env` e ajuste as chaves necessárias.
-2. **Setup**: Suba os serviços de monitoramento:
+2. **Setup**: Suba os serviços (API, MLflow e observabilidade):
     ```bash
     docker compose up -d
     ```
+    - O serviço `train` roda o baseline + treino LSTM e finaliza. A API (`api`) está configurada para iniciar após o `train` concluir com sucesso.
 3. **Encerramento**: Para parar os serviços: `docker compose down` (use `-v` para remover volumes de dados).
+
+### MLflow (UI e tracking)
+
+- **UI**: `http://localhost:5000` (ou a porta definida em `MLFLOW_PORT` no `.env`).
+- **Experimento padrão**: `Stock_Analysis_Datathon` (criado pelos scripts em `src/models/`).
+- **Persistência**: o backend/artefatos ficam no volume Docker `mlflow_data`.
 
 ### Endpoints Locais
 
@@ -46,6 +53,7 @@ Na raiz do repositório, com Docker e Docker Compose instalados:
 |-------------|-----------------------------|-------------------------------------------------|
 | Prometheus  | http://localhost:9090       | UI e API de consulta para métricas operacionais. |
 | Grafana     | http://localhost:3000       | Dashboards de métricas de negócio e drift. |
+| MLflow      | http://localhost:5000       | Tracking (params/métricas/artefatos) e UI dos runs. |
 | API FastAPI | http://localhost:8000/docs  | Documentação Swagger do Agente e modelo.         |
 
 ---
