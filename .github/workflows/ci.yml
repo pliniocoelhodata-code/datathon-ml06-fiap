@@ -9,33 +9,33 @@ on:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
-          cache-dependency-path: 'pyproject.toml'
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      - name: Set up Python
+        run: uv python install 3.12 
 
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: uv sync --all-extras --dev
 
       - name: Lint (ruff)
-        run: ruff check src/ tests/ evaluation/
+        run: uv run ruff check src/ tests/ evaluation/
 
       - name: Type check (mypy)
-        run: mypy src/ --ignore-missing-imports
+        run: uv run mypy src/ --ignore-missing-imports
 
       - name: Security scan (bandit)
-        run: bandit -r src/ -c pyproject.toml
+        run: uv run bandit -r src/ -c pyproject.toml
 
       - name: Unit tests (pytest)
         run: |
-          pytest tests/ -x \
+          uv run pytest tests/ -x \
             --cov=src \
             --cov-report=xml \
             --cov-fail-under=60 \

@@ -39,6 +39,7 @@ services:
     image: datathon-train-models
     pull_policy: build
     container_name: datathon-train-models
+    working_dir: /app
     environment:
       MLFLOW_TRACKING_URI: http://mlflow:5000
     env_file:
@@ -60,13 +61,14 @@ services:
     image: datathon-predict-api
     pull_policy: build
     container_name: datathon-predict-api
+    working_dir: /app
     ports:
       - "${API_PORT:-8000}:8000"
     env_file:
       - path: .env
         required: false
     volumes:
-      - ./.data:/app/.data
+      - ./data:/app/data
     networks:
       - observability
     depends_on:
@@ -114,6 +116,7 @@ services:
     volumes:
       - ./logs:/var/log/api  # Mapeia a pasta de logs da sua API
       - ./docker/promtail.yml:/etc/promtail/config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     command: -config.file=/etc/promtail/config.yml
     networks:
       - observability

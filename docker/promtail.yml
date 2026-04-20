@@ -16,3 +16,17 @@ scrape_configs:
         labels:
           job: predict-api
           __path__: /var/log/api/*.log
+
+  - job_name: docker-api-stdout
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+    relabel_configs:
+      - source_labels: [__meta_docker_container_name]
+        regex: /datathon-predict-api
+        action: keep
+      - source_labels: [__meta_docker_container_name]
+        regex: "/(.*)"
+        target_label: container_name
+        replacement: "${1}"
+        action: replace

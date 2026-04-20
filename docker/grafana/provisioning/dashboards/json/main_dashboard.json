@@ -107,11 +107,33 @@
             "refId": "A"
           }
         ]
+      },
+      {
+        "title": "Logs — eventos de drift (Loki)",
+        "type": "logs",
+        "gridPos": { "h": 10, "w": 24, "x": 0, "y": 16 },
+        "datasource": { "type": "loki", "uid": "loki" },
+        "targets": [
+          {
+            "datasource": { "type": "loki", "uid": "loki" },
+            "expr": "{container_name=\"datathon-predict-api\"} | json | event=~\"drift_analysis_.*\"",
+            "queryType": "range",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "dedupStrategy": "none",
+          "enableLogDetails": true,
+          "showLabels": false,
+          "showTime": true,
+          "sortOrder": "Descending",
+          "wrapLogMessage": true
+        }
       }
     ],
     "refresh": "10s",
     "schemaVersion": 39,
     "title": "Datathon ML Observability",
     "uid": "ml_obs_dashboard",
-    "version": 1
+    "version": 2
   }

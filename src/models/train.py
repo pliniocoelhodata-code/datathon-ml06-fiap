@@ -58,10 +58,17 @@ def run_pipeline():
         loss_p, pred_p = save_plots(history, y_real, y_pred, config['model']['name'])
         mlflow.log_artifact(loss_p)
         mlflow.log_artifact(pred_p)
-        
-        os.makedirs('models', exist_ok=True)
-        scaler_path = f"models/scaler_{config['model']['name']}.pkl"
-        joblib.dump(s_target, scaler_path)
+
+        os.makedirs('/app/data/models', exist_ok=True)
+        model.save('/app/data/models/modelo_global_v1.keras')
+
+        ticker = config['data']['symbol'].upper()
+        ticker_dir = f"/app/data/models/{ticker}"
+        os.makedirs(ticker_dir, exist_ok=True)
+        joblib.dump(s_feat, f"{ticker_dir}/scaler_features_{ticker}.pkl")
+        joblib.dump(s_target, f"{ticker_dir}/scaler_target_{ticker}.pkl")
+
+        scaler_path = f"/app/data/models/{ticker}/scaler_target_{ticker}.pkl"
         mlflow.log_artifact(scaler_path)
 
         mlflow.keras.log_model(model, "model")

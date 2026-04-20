@@ -36,7 +36,7 @@ dependencies = [
 [project.optional-dependencies]
 # Drift Evidently + testes em tests/test_drift.py
 monitoring = [
-    "evidently>=0.4.0",
+    "evidently>=0.7.21",
 ]
 # Plots e RAGAS (evaluation/)
 evaluation = [
@@ -79,7 +79,7 @@ dev = [
     "pre-commit>=3.6",
     "types-PyYAML",
     "faker>=24.0",
-    "evidently>=0.4.0",
+    "evidently>=0.7.21"
 ]
 
 [tool.setuptools.packages.find]
@@ -104,3 +104,12 @@ exclude_dirs = ["tests", "notebooks"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[dependency-groups]
+dev = [
+    "evidently>=0.7.21",
+    "faker>=40.13.0",
+    "httpx>=0.28.1",
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
+]

@@ -46,8 +46,8 @@ LAST_PREDICTED_PRICE = Gauge(
 router = APIRouter()
 
 BASE_DIR = Path(__file__).resolve().parents[3]
-ML_MODELS_DIR = BASE_DIR / "src/ml/models" # TODO: Rafael, ajustar quando modelo estiver pronto
-MODEL_GLOBAL_PATH = ML_MODELS_DIR / 'modelo_global_v1.keras' # TODO: Rafael, ajustar quando modelo estiver pronto   
+ML_MODELS_DIR = BASE_DIR / "data/models"
+MODEL_GLOBAL_PATH = ML_MODELS_DIR / 'modelo_global_v1.keras'
 
 
 model = None
@@ -80,8 +80,8 @@ def predict_stock_price(
     current_user: UserResponse = Depends(get_current_user)
 ):
     """
-    Endpoint documentado para predição de preços de ações.
-    Instrumentado para Prometheus/Grafana.
+    Recebe uma janela de 30 dias de OHLCV, aplica engenharia de features e retorna
+    o preço previsto para o ticker solicitado.
     """
     ticker = input_data.ticker.upper()
     

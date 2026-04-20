@@ -1,87 +1,104 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from evidently.metric_preset import DataDriftPreset
-from evidently.report import Report
+from scipy.stats import ks_2samp
 from prometheus_client import Gauge
 
 from src.common.logging_setup import setup_logging
 
 logger = setup_logging(__name__)
 
-# Gauge para monitorar a proporção de colunas com drift no Grafana
+# Evidently muito instável nas versões mais novas, gerando vários problemas de imports. 
 DRIFT_SHARE_GAUGE = Gauge(
-    "model_drift_share", 
+    "model_drift_share",
     "Proporção de colunas que apresentaram drift (0.0 a 1.0)",
     ["model_name"]
 )
+
 
 def run_drift_analysis(
     reference_data: pd.DataFrame,
     current_data: pd.DataFrame,
     model_name: str = "stock_lstm_v1"
-) -> Report:
+) -> dict[str, Any]:
     """
-    Compara o conjunto de referência ao atual e atualiza métricas no Prometheus.
+    Detecta drift comparando distribuições entre datasets.
+    Retorna um dicionário no formato semelhante ao Evidently.
     """
-    logger.info("Iniciando análise de drift", extra={"model": model_name, "layer": "monitoring"})
-    
-    report = Report(metrics=[DataDriftPreset()])
-    report.run(reference_data=reference_data, current_data=current_data)
-    
-    drift_dict = report.as_dict()
-    share = _extract_drift_share(drift_dict)
-    
-    if share is not None:
-        DRIFT_SHARE_GAUGE.labels(model_name=model_name).set(share)
-        logger.info(
-            "Análise de drift concluída", 
-            extra={
-                "model": model_name, 
-                "drift_share": share,
-                "status": "critical" if share > 0.2 else "normal"
-            }
-        )
-    
+
+    drift_results = _calculate_drift(reference_data, current_data)
+    share = drift_results["share_of_drifted_columns"]
+
+    DRIFT_SHARE_GAUGE.labels(model_name=model_name).set(share)
+
+    logger.info(
+        "Análise de drift concluída",
+        extra={
+            "model": model_name,
+            "drift_share": share,
+            "status": "critical" if share > 0.2 else "normal",
+            "event": "drift_analysis_complete",
+        },
+    )
+
+    return drift_results
+
+
+def _calculate_drift(
+    reference: pd.DataFrame,
+    current: pd.DataFrame,
+    p_value_threshold: float = 0.05
+) -> dict[str, Any]:
+    """
+    Calcula drift por coluna usando KS test.
+    """
+
+    drifted_columns = 0
+    total_columns = 0
+    column_results = {}
+
+    for col in reference.columns:
+        if col not in current.columns:
+            continue
+
+        ref_col = reference[col].dropna()
+        cur_col = current[col].dropna()
+
+        # só analisa colunas numéricas
+        if not pd.api.types.is_numeric_dtype(ref_col):
+            continue
+
+        if len(ref_col) == 0 or len(cur_col) == 0:
+            continue
+
+        stat, p_value = ks_2samp(ref_col, cur_col)
+
+        drift_detected = p_value < p_value_threshold
+
+        column_results[col] = {
+            "p_value": float(p_value),
+            "drift_detected": drift_detected,
+        }
+
+        total_columns += 1
+        if drift_detected:
+            drifted_columns += 1
+
+    share = drifted_columns / total_columns if total_columns > 0 else 0.0
+
+    return {
+        "share_of_drifted_columns": share,
+        "drifted_columns": drifted_columns,
+        "total_columns": total_columns,
+        "columns": column_results,
+    }
+
+
+def drift_report_to_dict(report: dict[str, Any]) -> dict[str, Any]:
     return report
-
-def _extract_drift_share(drift_dict: dict[str, Any]) -> float | None:
-    """Função interna robusta para extrair o valor do drift."""
-    for metric in drift_dict.get("metrics", []):
-        result = metric.get("result")
-        if isinstance(result, dict) and "share_of_drifted_columns" in result:
-            return float(result["share_of_drifted_columns"])
-    return None
-
-
-def drift_report_to_dict(report: Report) -> dict[str, Any]:
-    return report.as_dict()
 
 
 def share_of_drifted_columns(drift_dict: dict[str, Any]) -> float | None:
-    return _extract_drift_share(drift_dict)
-
-def save_drift_report_html(report: Report, path: str | Path) -> Path:
-    """Grava o relatório em HTML e loga o evento para auditoria."""
-    out = Path(path)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    report.save_html(str(out))
-    
-    logger.info("Relatório HTML de drift exportado", extra={"path": str(out)})
-    return out
-
-def save_drift_report_json(report: Report, path: str | Path) -> Path:
-    """Serializa as_dict() e loga o caminho do artefato."""
-    out = Path(path)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    
-    # TODO: Implementar upload para Bucket S3/GCS aqui conforme seu comentário
-    with out.open("w", encoding="utf-8") as f:
-        json.dump(report.as_dict(), f, indent=2, ensure_ascii=False)
-    
-    logger.info("Metadados de drift salvos em JSON", extra={"path": str(out)})
-    return out
+    return drift_dict.get("share_of_drifted_columns")
