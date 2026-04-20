@@ -72,6 +72,10 @@ drift:
 	@echo "Executando análise de Data Drift..."
 	$(PYTHON) src/monitoring/drift.py
 
+monitor-drift:
+	@echo "Executando análise de drift em pipeline..."
+	$(MAKE) drift
+
 ## Limpeza de ambiente
 clean:
 	rm -rf .pytest_cache .coverage htmlcov

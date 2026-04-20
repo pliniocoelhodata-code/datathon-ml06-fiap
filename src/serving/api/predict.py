@@ -2,6 +2,8 @@ import joblib
 import pandas as pd
 import numpy as np
 from pathlib import Path
+from datetime import datetime
+from uuid import uuid4
 from tensorflow.keras.models import load_model
 from fastapi import APIRouter, HTTPException, Depends
 from prometheus_client import Counter, Histogram, Gauge
@@ -10,6 +12,7 @@ from src.common.logging_setup import setup_logging
 from src.serving.core.security import get_current_user
 from src.serving.schemas.prediction import PredictionInput
 from src.serving.schemas.user import UserResponse
+from src.monitoring.metrics import PREDICTION_REQUESTS, PREDICTION_LATENCY, LAST_PREDICTED_PRICE
 
 logger = setup_logging(__name__)
 
@@ -27,27 +30,33 @@ def _prediction_audit_extra(
     }
 
 
-PREDICTION_REQUESTS = Counter(
-    "prediction_requests_total", 
-    "Total de pedidos de predição", 
-    ["ticker", "status"]
-)
-PREDICTION_LATENCY = Histogram(
-    "prediction_duration_seconds", 
-    "Tempo de execução da predição"
-)
-
-LAST_PREDICTED_PRICE = Gauge(
-    "last_predicted_stock_price", 
-    "Último preço previsto pela IA", 
-    ["ticker"]
-)
-
 router = APIRouter()
 
 BASE_DIR = Path(__file__).resolve().parents[3]
 ML_MODELS_DIR = BASE_DIR / "data/models"
 MODEL_GLOBAL_PATH = ML_MODELS_DIR / 'modelo_global_v1.keras'
+MONITORING_DIR = BASE_DIR / "data/monitoring"
+CURRENT_REQUESTS_PATH = MONITORING_DIR / "current_requests.csv"
+
+
+def _save_request_for_drift(ticker: str, data_frame: pd.DataFrame) -> None:
+    MONITORING_DIR.mkdir(parents=True, exist_ok=True)
+    request_id = uuid4().hex
+    timestamp = datetime.utcnow().isoformat()
+    request_df = data_frame.copy()
+    request_df["ticker"] = ticker
+    request_df["request_id"] = request_id
+    request_df["request_ts"] = timestamp
+
+    # Salvar apenas as colunas numéricas para análise de drift (compatível com referência)
+    numeric_columns = ['Open', 'High', 'Low', 'Close', 'Volume']
+    drift_df = request_df[numeric_columns].copy()
+    drift_df["ticker"] = ticker
+    drift_df["request_id"] = request_id
+    drift_df["request_ts"] = timestamp
+
+    write_header = not CURRENT_REQUESTS_PATH.exists()
+    drift_df.to_csv(CURRENT_REQUESTS_PATH, mode="a", header=write_header, index=False)
 
 
 model = None
@@ -133,6 +142,7 @@ def predict_stock_price(
             df.bfill(inplace=True)
             
             window_data = df.tail(30)
+            _save_request_for_drift(ticker, window_data)
             
             # Escalonamento e Predição
             data_scaled = scaler_features.transform(window_data.values)

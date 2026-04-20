@@ -1,0 +1,241 @@
+{
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+          "enable": true,
+          "hide": true,
+          "name": "Annotations & Alerts",
+          "type": "dashboard"
+        }
+      ]
+    },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 0,
+    "links": [
+      {
+        "asDropdown": true,
+        "icon": "external link",
+        "includeVars": true,
+        "keepTime": true,
+        "tags": ["business"],
+        "targetBlank": false,
+        "title": "Business Dashboard",
+        "type": "dashboards"
+      }
+    ],
+    "liveNow": false,
+    "panels": [
+      {
+        "title": "🖥️ CPU Usage por Container",
+        "type": "timeseries",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "targets": [
+          {
+            "expr": "rate(container_cpu_usage_seconds_total{name=~\"datathon.*\"}[5m]) * 100",
+            "legendFormat": "{{name}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 70 },
+                { "color": "red", "value": 90 }
+              ]
+            }
+          }
+        },
+        "description": "Uso de CPU por container do projeto"
+      },
+      {
+        "title": "🧠 Memória por Container",
+        "type": "timeseries",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "targets": [
+          {
+            "expr": "container_memory_usage_bytes{name=~\"datathon.*\"}",
+            "legendFormat": "{{name}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "bytes",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 100000000 },
+                { "color": "red", "value": 500000000 }
+              ]
+            }
+          }
+        },
+        "description": "Uso de memória RAM por container"
+      },
+      {
+        "title": "🌐 Status dos Serviços",
+        "type": "stat",
+        "gridPos": { "h": 6, "w": 8, "x": 0, "y": 8 },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "targets": [
+          {
+            "expr": "up{job=~\"datathon.*\"}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "DOWN",
+                    "color": "red"
+                  },
+                  "1": {
+                    "text": "UP",
+                    "color": "green"
+                  }
+                },
+                "type": "value"
+              }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "red", "value": null },
+                { "color": "green", "value": 1 }
+              ]
+            }
+          }
+        },
+        "description": "Status de saúde dos containers"
+      },
+      {
+        "title": "📊 Requests por Segundo",
+        "type": "timeseries",
+        "gridPos": { "h": 8, "w": 16, "x": 8, "y": 8 },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "targets": [
+          {
+            "expr": "rate(prometheus_http_requests_total[5m])",
+            "legendFormat": "Prometheus HTTP req/s",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(grafana_http_request_duration_milliseconds_count[5m])",
+            "legendFormat": "Grafana HTTP req/s",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null }
+              ]
+            }
+          }
+        },
+        "description": "Taxa de requests HTTP nos serviços de observabilidade"
+      },
+      {
+        "title": "💾 Disk Usage por Container",
+        "type": "barchart",
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "targets": [
+          {
+            "expr": "container_fs_usage_bytes{name=~\"datathon.*\"}",
+            "legendFormat": "{{name}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "bytes",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 1000000000 },
+                { "color": "red", "value": 5000000000 }
+              ]
+            }
+          }
+        },
+        "description": "Uso de disco por container"
+      },
+      {
+        "title": "🔄 Network I/O",
+        "type": "timeseries",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "targets": [
+          {
+            "expr": "rate(container_network_receive_bytes_total{name=~\"datathon.*\"}[5m])",
+            "legendFormat": "RX {{name}}",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(container_network_transmit_bytes_total{name=~\"datathon.*\"}[5m])",
+            "legendFormat": "TX {{name}}",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "Bps",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null }
+              ]
+            }
+          }
+        },
+        "description": "Tráfego de rede de entrada e saída"
+      },
+      {
+        "title": "📋 Container Logs (últimas 50 linhas)",
+        "type": "logs",
+        "gridPos": { "h": 10, "w": 24, "x": 0, "y": 24 },
+        "datasource": { "type": "loki", "uid": "loki" },
+        "targets": [
+          {
+            "datasource": { "type": "loki", "uid": "loki" },
+            "expr": "{container_name=~\"datathon.*\"} !~ \"GET /metrics\" !~ \"GET /health\"",
+            "queryType": "range",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "dedupStrategy": "none",
+          "enableLogDetails": true,
+          "showLabels": true,
+          "showTime": true,
+          "sortOrder": "Descending",
+          "wrapLogMessage": true
+        },
+        "description": "Logs dos containers (excluindo métricas e health checks)"
+      }
+    ],
+    "refresh": "30s",
+    "schemaVersion": 39,
+    "tags": ["infrastructure", "datathon", "monitoring"],
+    "title": "🖥️ Datathon ML - Infrastructure Metrics",
+    "uid": "ml_infra_dashboard",
+    "version": 1
+  }

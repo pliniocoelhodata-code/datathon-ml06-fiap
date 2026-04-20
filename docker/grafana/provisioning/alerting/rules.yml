@@ -20,7 +20,7 @@ groups:
                 type: prometheus
                 uid: prometheus
               editorMode: code
-              expr: model_drift_share > 0.2
+              expr: model_drift_share > 0.2 or model_psi > 0.2
               instant: true
               intervalMs: 1000
               legendFormat: __auto
@@ -81,8 +81,8 @@ groups:
         execErrState: Error
         for: 5m
         annotations:
-          summary: Drift detectado no modelo de Stocks
-          description: O share de drift ultrapassou o limite de 0.2 (PSI > 0.2).
+          summary: Drift crítico detectado no modelo de Stocks
+          description: Share de drift ou PSI médio ultrapassou o limite de 0.2, indicando necessidade de retreino.
         labels:
           severity: critical
           team: ml-ops

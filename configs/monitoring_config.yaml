@@ -1,2 +1,10 @@
-# Thresholds de drift — implementar
-{}
+# Thresholds de drift
+# PSI and share thresholds are used by monitoring to classify severity.
+drift:
+  psi:
+    warning: 0.1
+    critical: 0.2
+  share_of_drifted_columns:
+    warning: 0.1
+    critical: 0.2
+

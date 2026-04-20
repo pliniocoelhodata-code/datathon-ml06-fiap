@@ -13,3 +13,13 @@ stages:
       - data/raw/stock_data.csv
       - src/models/train.py
       - src/features/feature_engineering.py
+
+  monitor_drift:
+    cmd: make drift
+    deps:
+      - data/raw/stock_data.csv
+      - data/monitoring/current_requests.csv
+      - src/monitoring/drift.py
+      - configs/monitoring_config.yaml
+    outs:
+      - data/monitoring/drift_report.html

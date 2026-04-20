@@ -14,11 +14,22 @@
     "editable": true,
     "fiscalYearStartMonth": 0,
     "graphTooltip": 0,
-    "links": [],
+    "links": [
+      {
+        "asDropdown": true,
+        "icon": "external link",
+        "includeVars": true,
+        "keepTime": true,
+        "tags": ["infrastructure"],
+        "targetBlank": false,
+        "title": "Infrastructure Dashboard",
+        "type": "dashboards"
+      }
+    ],
     "liveNow": false,
     "panels": [
       {
-        "title": "Saúde da API (Taxa de Erro %)",
+        "title": "🚨 Saúde da API (Taxa de Erro %)",
         "type": "gauge",
         "gridPos": { "h": 8, "w": 6, "x": 0, "y": 0 },
         "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -41,10 +52,11 @@
               ]
             }
           }
-        }
+        },
+        "description": "Taxa de erro das predições de preço"
       },
       {
-        "title": "Monitoramento de Drift (Maturidade Nível 2)",
+        "title": "📊 Monitoramento de Drift (Maturidade Nível 2)",
         "type": "gauge",
         "gridPos": { "h": 8, "w": 6, "x": 6, "y": 0 },
         "datasource": { "type": "prometheus", "uid": "prometheus" },
@@ -58,6 +70,7 @@
           "defaults": {
             "min": 0,
             "max": 1,
+            "unit": "percentunit",
             "thresholds": {
               "mode": "absolute",
               "steps": [
@@ -67,25 +80,72 @@
               ]
             }
           }
-        }
+        },
+        "description": "Proporção de colunas com drift detectado"
       },
       {
-        "title": "Latência Média de Predição (SLA)",
+        "title": "🔬 PSI Médio do Modelo",
+        "type": "gauge",
+        "gridPos": { "h": 8, "w": 6, "x": 12, "y": 0 },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "targets": [
+          {
+            "expr": "model_psi",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "min": 0,
+            "max": 1,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 0.1 },
+                { "color": "red", "value": 0.2 }
+              ]
+            }
+          }
+        },
+        "description": "Population Stability Index - mede mudança na distribuição dos dados"
+      },
+      {
+        "title": "⚡ Latência Média de Predição (SLA)",
         "type": "timeseries",
-        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
         "datasource": { "type": "prometheus", "uid": "prometheus" },
         "targets": [
           {
             "expr": "rate(prediction_duration_seconds_sum[5m]) / rate(prediction_duration_seconds_count[5m])",
-            "legendFormat": "Latência (s)",
+            "legendFormat": "Latência Média (s)",
             "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(prediction_duration_seconds_bucket[5m]))",
+            "legendFormat": "P95 (s)",
+            "refId": "B"
           }
-        ]
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 1 },
+                { "color": "red", "value": 2 }
+              ]
+            }
+          }
+        },
+        "description": "Latência das predições com percentis"
       },
       {
-        "title": "Volume de Predições por Ticker",
+        "title": "📈 Volume de Predições por Ticker (última hora)",
         "type": "barchart",
-        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
         "datasource": { "type": "prometheus", "uid": "prometheus" },
         "targets": [
           {
@@ -93,12 +153,26 @@
             "legendFormat": "{{ticker}}",
             "refId": "A"
           }
-        ]
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "orange", "value": 10 },
+                { "color": "red", "value": 50 }
+              ]
+            }
+          }
+        },
+        "description": "Volume de requests por ativo financeiro"
       },
       {
-        "title": "Últimos Preços Previstos por Ativo",
+        "title": "💰 Últimos Preços Previstos por Ativo",
         "type": "table",
-        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
         "datasource": { "type": "prometheus", "uid": "prometheus" },
         "targets": [
           {
@@ -106,12 +180,38 @@
             "instant": true,
             "refId": "A"
           }
-        ]
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyBRL",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null }
+              ]
+            }
+          }
+        },
+        "description": "Último preço previsto pela IA para cada ticker"
       },
       {
-        "title": "Logs — eventos de drift (Loki)",
+        "title": "📊 Taxa de Sucesso por Status",
+        "type": "piechart",
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "targets": [
+          {
+            "expr": "sum by (status) (increase(prediction_requests_total[1h]))",
+            "legendFormat": "{{status}}",
+            "refId": "A"
+          }
+        ],
+        "description": "Distribuição dos status das predições"
+      },
+      {
+        "title": "📋 Logs — Eventos de Drift (Loki)",
         "type": "logs",
-        "gridPos": { "h": 10, "w": 24, "x": 0, "y": 16 },
+        "gridPos": { "h": 10, "w": 24, "x": 0, "y": 24 },
         "datasource": { "type": "loki", "uid": "loki" },
         "targets": [
           {
@@ -128,12 +228,13 @@
           "showTime": true,
           "sortOrder": "Descending",
           "wrapLogMessage": true
-        }
+        },
+        "description": "Logs estruturados dos eventos de análise de drift"
       }
     ],
-    "refresh": "10s",
+    "refresh": "30s",
     "schemaVersion": 39,
-    "title": "Datathon ML Observability",
-    "uid": "ml_obs_dashboard",
-    "version": 2
-  }
+    "tags": ["mlops", "datathon", "monitoring"],
+    "title": "🏢 Datathon ML - Business Metrics",
+    "uid": "ml_business_dashboard",
+    "version": 3

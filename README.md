@@ -1,92 +1,190 @@
 # Datathon — Hub de Investimentos com IA (Fase 05)
 
-Este repositório contém a implementação do projeto integrador da Fase 05, focado em LLMs, Agentes e MLOps aplicados ao mercado financeiro. O objetivo é atingir o **Nível 2 de maturidade MLOps**.
+Este repositório contém a implementação completa do projeto integrador da Fase 05, focado em LLMs, Agentes e MLOps aplicados ao mercado financeiro. O objetivo é atingir o **Nível 2 de maturidade MLOps** com um sistema de predição de preços de ações usando IA.
 
 ---
 
-## 🚀 Como Começar (Workflow)
+## 🎯 O que o Projeto Fornece
 
-Este projeto utiliza um `Makefile` para padronizar as tarefas de desenvolvimento e garantir a reprodutibilidade do pipeline, evitando Gaps de engenharia de software.
+### 🤖 Sistema de Predição de Preços de Ações
+- **Modelo LSTM**: Predição de preços futuros baseada em séries temporais históricas
+- **API FastAPI**: Endpoint REST para predições em tempo real
+- **Agente ReAct**: Assistente inteligente com ferramentas especializadas em análise financeira
 
-1.  **Instalação**: Configure seu ambiente virtual e dependências:
-    ```bash
-    make install
-    ```
-2.  **Qualidade**: Garante que o código respeita os critérios de teste (mínimo 60% de cobertura):
-    ```bash
-    make test
-    ```
-3.  **Avaliação RAG**: Valida a performance do Agente contra o *Golden Set* de 20 casos usando **RAGAS**:
-    ```bash
-    make evaluate
-    ```
-4.  **Monitoramento de Drift**: Gera o relatório de saúde dos dados e predições com **Evidently**:
-    ```bash
-    make drift
-    ```
+### 📊 Observabilidade Completa
+- **MLflow**: Tracking de experimentos, métricas de modelo e artefatos
+- **Prometheus + Grafana**: Dashboards de métricas operacionais e de negócio
+- **Drift Detection**: Monitoramento automático de data drift e prediction drift
+- **Logs Centralizados**: Loki para agregação e análise de logs
 
----
+### 🔒 Segurança e Governança
+- **Guardrails**: Filtros de entrada/saída e detecção de PII
+- **OWASP Top 10**: Mitigação de ameaças específicas para LLMs
+- **LGPD Compliance**: Plano de proteção de dados pessoais
 
-## 📊 Observabilidade (Docker)
-
-A infraestrutura de monitoramento é essencial para evitar o Gap de ausência de monitoramento de modelos. Utilizamos Prometheus e Grafana para telemetria e dashboards, e **MLflow** para tracking de experimentos.
-
-Na raiz do repositório, com Docker e Docker Compose instalados:
-
-1. **Configuração**: Copie as variáveis de ambiente: `cp .env.example .env` e ajuste as chaves necessárias.
-2. **Setup**: Suba os serviços (API, MLflow e observabilidade):
-    ```bash
-    docker compose up -d
-    ```
-    - O serviço `train` roda o baseline + treino LSTM e finaliza. A API (`api`) está configurada para iniciar após o `train` concluir com sucesso.
-3. **Encerramento**: Para parar os serviços: `docker compose down` (use `-v` para remover volumes de dados).
-
-### MLflow (UI e tracking)
-
-- **UI**: `http://localhost:5000` (ou a porta definida em `MLFLOW_PORT` no `.env`).
-- **Experimento padrão**: `Stock_Analysis_Datathon` (criado pelos scripts em `src/models/`).
-- **Persistência**: o backend/artefatos ficam no volume Docker `mlflow_data`.
-
-### Endpoints Locais
-
-| Serviço     | URL                         | Observação                                      |
-|-------------|-----------------------------|-------------------------------------------------|
-| Prometheus  | http://localhost:9090       | UI e API de consulta para métricas operacionais. |
-| Grafana     | http://localhost:3000       | Dashboards de métricas de negócio e drift. |
-| MLflow      | http://localhost:5000       | Tracking (params/métricas/artefatos) e UI dos runs. |
-| API FastAPI | http://localhost:8000/docs  | Documentação Swagger do Agente e modelo.         |
+### 🧪 Qualidade e Testes
+- **Cobertura de Testes**: >60% com pytest
+- **RAGAS Evaluation**: Benchmark das 4 métricas obrigatórias contra Golden Set
+- **Model Cards**: Documentação completa de modelos e sistema
 
 ---
 
-## 🛠️ Pilares do Projeto
+## 🚀 Como Rodar o Projeto (Guia Completo)
 
-### 1. Dados e Baseline (Etapa 1)
-* **DVC**: Versionamento de dados brutos e processados para garantir reprodutibilidade.
-* **MLflow**: Tracking padronizado de métricas (AUC, F1, Precisão), parâmetros e artefatos.
+### Pré-requisitos
+- Python 3.11+
+- Docker & Docker Compose
+- Make (opcional, mas recomendado)
 
-### 2. LLM e Agente (Etapa 2)
-* **Agente ReAct**: Implementação com ≥ 3 ferramentas customizadas para o domínio financeiro.
-* **RAG Pipeline**: Recuperação de contexto baseada nos dados fornecidos pela empresa.
+### 1. Setup Inicial
 
-### 3. Avaliação e Monitoramento (Etapa 3)
-* **Golden Set**: Conjunto de ≥ 20 pares (query/expected) para validação técnica.
-* **RAGAS**: Cálculo das 4 métricas obrigatórias: Faithfulness, Answer Relevancy, Context Precision e Context Recall.
-* **Drift Detection**: Monitoramento proativo de data e prediction drift via Evidently.
+```bash
+# Clone o repositório
+git clone <repository-url>
+cd datathon-ml06-fiap
 
-### 4. Segurança e Governança (Etapa 4)
-* **Guardrails**: Implementação de filtros de input/output e detecção de PII.
-* **OWASP Top 10**: Mapeamento e mitigação de pelo menos 5 ameaças para LLMs.
-* **Model/System Cards**: Documentação completa sobre o funcionamento, riscos e limitações do sistema.
+# Configure variáveis de ambiente
+cp .env.example .env
+# Edite .env com suas configurações (APIs, portas, etc.)
+
+# Instale dependências
+make install
+```
+
+### 2. Desenvolvimento Local
+
+#### Treinamento do Modelo
+```bash
+# Treine o modelo baseline (LSTM) com tracking MLflow
+make train
+```
+
+#### Testes e Qualidade
+```bash
+# Execute testes unitários
+make test
+
+# Avalie performance do RAG com RAGAS
+make evaluate
+
+# Analise drift dos dados
+make drift
+```
+
+#### API Local (Desenvolvimento)
+```bash
+# Inicie API com reload automático
+make api-dev
+# Acesse: http://localhost:8000/docs
+```
+
+### 3. Ambiente Completo com Docker
+
+```bash
+# Suba toda a stack (API + MLflow + Observabilidade)
+docker compose up -d --build
+
+# Ou apenas a API isoladamente
+make docker-api-build
+make docker-api-run
+```
+
+### 4. Acesse os Serviços
+
+| Serviço | URL | Descrição |
+|---------|-----|-----------|
+| **API FastAPI** | http://localhost:8000/docs | Documentação Swagger da API de predições |
+| **MLflow UI** | http://localhost:5000 | Tracking de experimentos e modelos |
+| **Grafana** | http://localhost:3000 | Dashboards: Business Metrics & Infrastructure (user: admin, pass: admin) |
+| **Prometheus** | http://localhost:9090 | Consulta de métricas operacionais |
 
 ---
 
-## 📂 Estrutura do Repositório
+## 📋 Workflow de Uso
 
-```text
-├── data/              # Dados e Golden Set (20 pares)
-├── src/               # Código fonte (Features, Models, Agent, Serving)
-├── evaluation/        # Scripts de RAGAS e Benchmarks
-├── monitoring/        # Scripts de Drift e métricas Prometheus
-├── docs/              # Model Card, System Card e Plano LGPD
-├── tests/             # Suíte de testes (pytest)
-└── Makefile           # Atalhos de automação do projeto
+### Para Desenvolvedores
+1. **Setup**: `make install`
+2. **Desenvolvimento**: Modifique código em `src/`
+3. **Teste**: `make test`
+4. **Iteração**: `make api-dev` para testar API
+
+### Para Data Scientists
+1. **Treino**: `make train` (modelo salvo em MLflow)
+2. **Avaliação**: `make evaluate` (métricas RAGAS)
+3. **Monitoramento**: `make drift` (análise de drift)
+
+### Para Operações
+1. **Deploy**: `docker compose up -d`
+2. **Monitoramento**: Acesse Grafana para dashboards
+3. **Logs**: Verifique Loki via Grafana
+
+---
+
+## 🏗️ Arquitetura Técnica
+
+### Pipeline MLOps
+```
+Dados Brutos → Feature Engineering → Treino (MLflow) → API → Monitoramento
+     ↓              ↓                      ↓          ↓          ↓
+    DVC          Pandas/Numpy           LSTM     FastAPI   Prometheus
+                                                          Grafana
+```
+
+### Componentes Principais
+- **src/models/**: Treinamento e baseline
+- **src/serving/**: API FastAPI e endpoints
+- **src/agent/**: Agente ReAct com ferramentas
+- **src/monitoring/**: Drift detection e métricas
+- **evaluation/**: RAGAS e benchmarks
+- **tests/**: Suíte de testes
+
+---
+
+## 📈 Métricas e Monitoramento
+
+### Métricas de Modelo (MLflow)
+- RMSE, MAE, R²
+- Parâmetros de treinamento
+- Artefatos (modelos, scalers)
+
+### Métricas Operacionais (Prometheus)
+- Latência de predições
+- Taxa de erro por endpoint
+- Uso de recursos
+
+### Drift Detection
+- Population Stability Index (PSI)
+- Share of drifted columns
+- Alertas automáticos no Grafana
+
+---
+
+## 🔐 Segurança
+
+- **Input Validation**: Guardrails em prompts e dados
+- **PII Detection**: Identificação automática de dados sensíveis
+- **Rate Limiting**: Controle de uso da API
+- **OWASP Compliance**: Mitigação de 5+ ameaças LLM
+
+---
+
+## 📚 Documentação Adicional
+
+- [Model Card](docs/MODEL_CARD.md): Detalhes do modelo LSTM
+- [System Card](docs/SYSTEM_CARD.md): Arquitetura completa
+- [LGPD Plan](docs/LGPD_PLAN.md): Conformidade de dados
+- [OWASP Mapping](docs/OWASP_MAPPING.md): Segurança LLM
+- [Metric Mapping](docs/METRIC_MAPPING.md): Métricas de negócio
+- **[Monitoring Guide](docs/MONITORING_README.md)**: Guia completo de observabilidade (Prometheus, Grafana, MLflow)
+
+---
+
+## 🤝 Contribuição
+
+1. Fork o projeto
+2. Crie uma branch (`git checkout -b feature/nova-feature`)
+3. Commit suas mudanças (`git commit -am 'Adiciona nova feature'`)
+4. Push para a branch (`git push origin feature/nova-feature`)
+5. Abra um Pull Request
+
+Para desenvolvimento local, use `make test` antes de commitar.
