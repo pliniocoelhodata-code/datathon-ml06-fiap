@@ -1,6 +1,3 @@
-"""
-Módulo de monitoramento com Sentry e métricas de performance.
-"""
 import os
 import sentry_sdk
 import logging

@@ -33,8 +33,9 @@ Este repositório contém a implementação completa do projeto integrador da Fa
 
 ### Pré-requisitos
 - Python 3.11+
+- [uv](https://docs.astral.sh/uv/) (gerenciador de ambiente/dependências recomendado)
 - Docker & Docker Compose
-- Make (opcional, mas recomendado)
+- Make (opcional, para atalhos)
 
 ### 1. Setup Inicial
 
@@ -47,9 +48,14 @@ cd datathon-ml06-fiap
 cp .env.example .env
 # Edite .env com suas configurações (APIs, portas, etc.)
 
-# Instale dependências
-make install
+# Sincronize dependências em ambiente gerenciado pelo uv (recomendado)
+uv sync --extra dev
+
+# Execute comandos do projeto com uv (ex.: testes)
+uv run make test
 ```
+
+> Em Ubuntu/WSL (PEP 668), evite `make install` fora de um virtualenv, pois ele usa `pip` global e pode falhar com `externally-managed-environment`.
 
 ### 2. Desenvolvimento Local
 
@@ -62,19 +68,19 @@ make train
 #### Testes e Qualidade
 ```bash
 # Execute testes unitários
-make test
+uv run make test
 
 # Avalie performance do RAG com RAGAS
-make evaluate
+uv run make evaluate
 
 # Analise drift dos dados
-make drift
+uv run make drift
 ```
 
 #### API Local (Desenvolvimento)
 ```bash
 # Inicie API com reload automático
-make api-dev
+uv run make api-dev
 # Acesse: http://localhost:8000/docs
 ```
 
@@ -103,15 +109,15 @@ make docker-api-run
 ## 📋 Workflow de Uso
 
 ### Para Desenvolvedores
-1. **Setup**: `make install`
+1. **Setup**: `uv sync --extra dev`
 2. **Desenvolvimento**: Modifique código em `src/`
-3. **Teste**: `make test`
-4. **Iteração**: `make api-dev` para testar API
+3. **Teste**: `uv run make test`
+4. **Iteração**: `uv run make api-dev` para testar API
 
 ### Para Data Scientists
-1. **Treino**: `make train` (modelo salvo em MLflow)
-2. **Avaliação**: `make evaluate` (métricas RAGAS)
-3. **Monitoramento**: `make drift` (análise de drift)
+1. **Treino**: `uv run make train` (modelo salvo em MLflow)
+2. **Avaliação**: `uv run make evaluate` (métricas RAGAS)
+3. **Monitoramento**: `uv run make drift` (análise de drift)
 
 ### Para Operações
 1. **Deploy**: `docker compose up -d`
@@ -187,4 +193,4 @@ Dados Brutos → Feature Engineering → Treino (MLflow) → API → Monitoramen
 4. Push para a branch (`git push origin feature/nova-feature`)
 5. Abra um Pull Request
 
-Para desenvolvimento local, use `make test` antes de commitar.
+Para desenvolvimento local, use `uv run make test` antes de commitar.

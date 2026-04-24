@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 from pathlib import Path
 from typing import Any
 
@@ -29,25 +30,6 @@ def run_drift_analysis(
     share = drift_results["share_of_drifted_columns"]
 
     DRIFT_SHARE_GAUGE.labels(model_name=model_name).set(share)
-
-    # Logar métricas de drift no MLflow
-    mlflow.set_experiment("Stock_Analysis_Datathon")
-    with mlflow.start_run(run_name=f"drift_analysis_{model_name}"):
-        mlflow.log_param("model_name", model_name)
-        mlflow.log_metric("drift_share", share)
-        mlflow.log_metric("drifted_columns", drift_results["drifted_columns"])
-        mlflow.log_metric("total_columns", drift_results["total_columns"])
-        
-        import json
-        import tempfile
-        import os
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-            json.dump(drift_results["columns"], f, indent=2)
-            temp_file = f.name
-        
-        mlflow.log_artifact(temp_file, "drift_details.json")
-        os.unlink(temp_file)
 
     logger.info(
         "Análise de drift concluída",
@@ -123,7 +105,44 @@ def share_of_drifted_columns(drift_dict: dict[str, Any]) -> float | None:
 def load_data(path: Path) -> pd.DataFrame:
     if not path.exists():
         raise FileNotFoundError(f"Arquivo de dados não encontrado: {path}")
-    return pd.read_csv(path)
+
+    required_cols = ["Open", "High", "Low", "Close", "Volume"]
+
+    def _is_number(value: str) -> bool:
+        try:
+            float(value)
+            return True
+        except (TypeError, ValueError):
+            return False
+
+    rows: list[list[float]] = []
+    with path.open(newline="", encoding="utf-8") as csv_file:
+        reader = csv.reader(csv_file)
+        for row in reader:
+            if not row:
+                continue
+
+            # Ignora cabeçalhos possíveis: Date,Open,... ou Open,High,...
+            first = row[0].strip().lower()
+            if first in {"date", "open"}:
+                continue
+
+            # Formato B (requisições): Open,High,Low,Close,Volume,(meta...)
+            if len(row) >= 5 and _is_number(row[0]):
+                values = row[0:5]
+            # Formato A (referência): Date,Open,High,Low,Close,Volume
+            elif len(row) >= 6 and _is_number(row[1]):
+                values = row[1:6]
+            else:
+                continue
+
+            if all(_is_number(v) for v in values):
+                rows.append([float(v) for v in values])
+
+    if not rows:
+        raise ValueError(f"Nenhuma linha válida encontrada no arquivo: {path}")
+
+    return pd.DataFrame(rows, columns=required_cols)
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]

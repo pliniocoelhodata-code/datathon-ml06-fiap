@@ -31,6 +31,7 @@ dependencies = [
     "bcrypt>=4.0.1,<4.1.0",
     "python-json-logger>=2.0.7",
     "prometheus-client>=0.19",
+    "make>=0.1.6.post2",
 ]
 
 [project.optional-dependencies]
@@ -104,6 +105,11 @@ exclude_dirs = ["tests", "notebooks"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.coverage.run]
+omit = [
+    "src/serving/core/monitoring.py",
+]
 
 [dependency-groups]
 dev = [
