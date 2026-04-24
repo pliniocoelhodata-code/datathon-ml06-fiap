@@ -64,6 +64,8 @@ services:
     working_dir: /app
     ports:
       - "${API_PORT:-8000}:8000"
+    environment:
+      - DATABASE_URL=sqlite:////app/data/serving.db
     env_file:
       - path: .env
         required: false
