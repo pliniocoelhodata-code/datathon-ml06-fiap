@@ -33,6 +33,7 @@ models/images/
 data/raw/*.csv
 data/processed/*.csv
 data/golden_set/*.csv
+data/models/*.pkl
 
 # Garante que arquivos de controle do DVC NUNCA sejam ignorados
 !*.dvc
@@ -44,3 +45,8 @@ data/golden_set/*.csv
 
 # Notebooks
 .ipynb_checkpoints/
+
+latest_results.json
+serving.db
+
+vector_store

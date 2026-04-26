@@ -4,14 +4,34 @@ Este repositório contém a implementação completa do projeto integrador da Fa
 
 ---
 
-## 🎯 O que o Projeto Fornece
+### 🤖 Sistema de Predição e Agente Financeiro
+- **Modelo LSTM**: Predição de preços baseada em séries temporais (Open, High, Low, Close, Volume).
+- **Agente ReAct**: Assistente inteligente que utiliza ferramentas para responder dúvidas financeiras.
+- **RAG (Retrieval-Augmented Generation)**: Base de conhecimento técnica sobre mercado financeiro usando FAISS e embeddings `mxbai-embed-large`.
+- **API FastAPI**: Endpoints REST para predições numéricas e interações com o agente.
 
-### 🤖 Sistema de Predição de Preços de Ações
-- **Modelo LSTM**: Predição de preços futuros baseada em séries temporais históricas
-- **API FastAPI**: Endpoint REST para predições em tempo real
-- **Agente ReAct**: Assistente inteligente com ferramentas especializadas em análise financeira
+---
 
-### 📊 Observabilidade Completa
+## 🧠 Agente e RAG (Arquitetura)
+
+O projeto implementa um **Agente ReAct** capaz de raciocinar e utilizar ferramentas para fornecer respostas fundamentadas.
+
+### Pipeline RAG
+- **Motor**: FAISS (Facebook AI Similarity Search).
+- **Embeddings**: `mxbai-embed-large` rodando localmente via Ollama.
+- **Estratégia**: Chunking de 500 caracteres com 50 de overlap para manter o contexto semântico.
+- **Ferramentas do Agente**:
+    1. `search_market_knowledge`: Acessa a base vetorial para conceitos teóricos.
+    2. `get_stock_prediction`: Consulta o modelo LSTM para tendências de preço.
+    3. `get_technical_indicators`: Calcula indicadores em tempo real (RSI, Médias Móveis).
+
+### Avaliação de Qualidade
+Utilizamos o framework **RAGAS** para medir a precisão do sistema em quatro pilares: *Faithfulness*, *Answer Relevancy*, *Context Precision* e *Context Recall*. Complementamos com **LLM-as-judge** para garantir o alinhamento de negócio.
+
+---
+
+## 📊 Observabilidade Completa
+
 - **MLflow**: Tracking de experimentos, métricas de modelo e artefatos
 - **Prometheus + Grafana**: Dashboards de métricas operacionais e de negócio
 - **Drift Detection**: Monitoramento automático de data drift e prediction drift
@@ -181,7 +201,9 @@ Dados Brutos → Feature Engineering → Treino (MLflow) → API → Monitoramen
 - [LGPD Plan](docs/LGPD_PLAN.md): Conformidade de dados
 - [OWASP Mapping](docs/OWASP_MAPPING.md): Segurança LLM
 - [Metric Mapping](docs/METRIC_MAPPING.md): Métricas de negócio
-- **[Monitoring Guide](docs/MONITORING_README.md)**: Guia completo de observabilidade (Prometheus, Grafana, MLflow)
+- [Monitoring Guide](docs/MONITORING_README.md): Guia completo de observabilidade
+- [Benchmark LLM](docs/BENCHMARK.md): Comparativo de performance e quantização
+- [Evaluation Report](docs/EVALUATION_REPORT.md): Relatório de métricas RAGAS e LLM-as-judge
 
 ---
 

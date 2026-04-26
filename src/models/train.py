@@ -5,7 +5,7 @@ import joblib
 import mlflow
 import mlflow.keras
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout
+from tensorflow.keras.layers import LSTM, Dense, Dropout, Input
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import EarlyStopping
 from src.features.feature_engineering import prepare_data
@@ -13,7 +13,8 @@ from evaluation.model_evaluation import evaluate_model, save_plots
 
 def build_lstm(input_shape, lr):
     model = Sequential([
-        LSTM(100, return_sequences=True, input_shape=input_shape),
+        Input(shape=input_shape),
+        LSTM(100, return_sequences=True),
         Dropout(0.2),
         LSTM(100, return_sequences=False),
         Dropout(0.2),

@@ -1,6 +1,8 @@
+import asyncio
 import joblib
 import pandas as pd
 import numpy as np
+import os
 from pathlib import Path
 from datetime import datetime
 from uuid import uuid4
@@ -10,25 +12,27 @@ from prometheus_client import Counter, Histogram, Gauge
 
 from src.common.logging_setup import setup_logging
 from src.serving.core.security import get_current_user
-from src.serving.schemas.prediction import PredictionInput
+from src.serving.schemas.prediction import PredictionInput, AgentInput, AgentResponse
 from src.serving.schemas.user import UserResponse
 from src.monitoring.metrics import PREDICTION_REQUESTS, PREDICTION_LATENCY, LAST_PREDICTED_PRICE
+from src.agent.react_agent import get_financial_agent
 
 logger = setup_logging(__name__)
 
+AGENT_REQUESTS = Counter(
+    "agent_requests_total", 
+    "Total number of requests to the Financial Agent", 
+    ["status"]
+)
 
-def _prediction_audit_extra(
-    current_user: UserResponse,
-    ticker: str,
-    *,
-    predicted_price: float | None = None,
-) -> dict[str, object]:
-    return {
-        "user": current_user.username,
-        "ticker": ticker,
-        "predicted_price": predicted_price,
-    }
+# Singleton for the agent to avoid reloading the model on each request.
+_agent = None
 
+def get_agent():
+    global _agent
+    if _agent is None:
+        _agent = get_financial_agent()
+    return _agent
 
 router = APIRouter()
 
@@ -48,7 +52,7 @@ def _save_request_for_drift(ticker: str, data_frame: pd.DataFrame) -> None:
     request_df["request_id"] = request_id
     request_df["request_ts"] = timestamp
 
-    # Salvar apenas as colunas numéricas para análise de drift (compatível com referência)
+    # Singleton for the agent to avoid reloading the model on each request.
     numeric_columns = ['Open', 'High', 'Low', 'Close', 'Volume']
     drift_df = request_df[numeric_columns].copy()
     drift_df["ticker"] = ticker
@@ -63,11 +67,11 @@ model = None
 try:
     if MODEL_GLOBAL_PATH.exists():
         model = load_model(MODEL_GLOBAL_PATH)
-        logger.info(f"Modelo global carregado com sucesso de {MODEL_GLOBAL_PATH}")
+        logger.info(f"Global model successfully loaded {MODEL_GLOBAL_PATH}")
     else:
-        logger.error(f"Modelo global não encontrado em {MODEL_GLOBAL_PATH}")
+        logger.error(f"Global model not found in {MODEL_GLOBAL_PATH}")
 except Exception as e:
-    logger.error(f"Falha ao carregar o modelo global: {e}")
+    logger.error(f"Failed to load global model: {e}")
 
 def load_ticker_scalers(ticker: str):
     ticker = ticker.upper()
@@ -77,11 +81,25 @@ def load_ticker_scalers(ticker: str):
     targ_path = ticker_dir / f'scaler_target_{ticker}.pkl'
 
     if not feat_path.exists() or not targ_path.exists():
-        raise FileNotFoundError(f"Scalers para {ticker} não encontrados.")
+        raise FileNotFoundError(f"Scalers to {ticker} not found.")
 
     s_feat = joblib.load(feat_path)
     s_targ = joblib.load(targ_path)
     return s_feat, s_targ
+
+def _prediction_audit_extra(user: UserResponse, ticker: str, predicted_price: float = None) -> dict:
+    """
+    Returns a dictionary with extra fields for auditing predictions.
+    """
+    extra = {
+        "user_id": str(user.id),
+        "username": user.username,
+        "ticker": ticker,
+        "timestamp": datetime.utcnow().isoformat(),
+    }
+    if predicted_price is not None:
+        extra["predicted_price"] = predicted_price
+    return extra
 
 @router.post("/predict")
 def predict_stock_price(
@@ -89,22 +107,19 @@ def predict_stock_price(
     current_user: UserResponse = Depends(get_current_user)
 ):
     """
-    Recebe uma janela de 30 dias de OHLCV, aplica engenharia de features e retorna
-    o preço previsto para o ticker solicitado.
+    Receives a 30-day window of OHLCV data, applies feature engineering, and returns the predicted price for the requested ticker.
     """
     ticker = input_data.ticker.upper()
     
-    # Iniciamos a medição de tempo
     with PREDICTION_LATENCY.time():
         try:
-            # Validação de modelo carregado
             if model is None:
                 PREDICTION_REQUESTS.labels(ticker=ticker, status="error").inc()
                 logger.error(
-                    "Modelo não inicializado no servidor.",
+                    "Model not initialized on the server.",
                     extra=_prediction_audit_extra(current_user, ticker),
                 )
-                raise HTTPException(status_code=500, detail="Modelo não inicializado no servidor.")
+                raise HTTPException(status_code=500, detail="Model not initialized on the server.")
 
             # Carregamento de Scalers
             try:
@@ -112,22 +127,22 @@ def predict_stock_price(
             except FileNotFoundError:
                 PREDICTION_REQUESTS.labels(ticker=ticker, status="not_found").inc()
                 logger.warning(
-                    "Ticker não suportado (scalers ausentes).",
+                    "Ticker not supported (missing scalers).",
                     extra=_prediction_audit_extra(current_user, ticker),
                 )
                 raise HTTPException(
                     status_code=404, 
-                    detail=f"Ticker {ticker} não suportado. Escolha entre: AAPL, MSFT, GOOGL, DIS, AMZN, TSLA, META, NFLX"
+                    detail=f"Ticker {ticker} not supported. Choose from: AAPL, MSFT, GOOGL, DIS, AMZN, TSLA, META, NFLX"
                 )
 
             # Validação de Input (30 dias / 5 features)
             if len(input_data.data) != 30 or any(len(day) != 5 for day in input_data.data):
                 PREDICTION_REQUESTS.labels(ticker=ticker, status="bad_request").inc()
                 logger.warning(
-                    "Payload inválido para predição.",
+                    "Invalid payload for prediction.",
                     extra=_prediction_audit_extra(current_user, ticker),
                 )
-                raise HTTPException(status_code=400, detail="Dados devem conter exatamente 30 dias com 5 features cada.")
+                raise HTTPException(status_code=400, detail="Data should contain exactly 30 days with 5 features each.")
 
             # Engenharia de Features (Fase 02)
             df = pd.DataFrame(input_data.data, columns=['Open', 'High', 'Low', 'Close', 'Volume'])
@@ -144,9 +159,13 @@ def predict_stock_price(
             window_data = df.tail(30)
             _save_request_for_drift(ticker, window_data)
             
+            # Seleciona apenas as 5 colunas originais para o scaler e modelo
+            original_columns = ['Open', 'High', 'Low', 'Close', 'Volume']
+            window_data_filtered = window_data[original_columns]
+            
             # Escalonamento e Predição
-            data_scaled = scaler_features.transform(window_data.values)
-            data_scaled = data_scaled.reshape(1, 30, 9) # 5 originais + 4 novas features
+            data_scaled = scaler_features.transform(window_data_filtered.values)
+            data_scaled = data_scaled.reshape(1, 30, 5) # Ajustado para 5 features
             
             prediction_scaled = model.predict(data_scaled, verbose=0)
             prediction = scaler_target.inverse_transform(prediction_scaled.reshape(-1, 1))
@@ -158,7 +177,7 @@ def predict_stock_price(
             LAST_PREDICTED_PRICE.labels(ticker=ticker).set(final_price)
             
             logger.info(
-                "Predição concluída com sucesso.",
+                "Prediction successfully completed.",
                 extra=_prediction_audit_extra(
                     current_user, ticker, predicted_price=final_price
                 ),
@@ -174,4 +193,30 @@ def predict_stock_price(
                 extra=_prediction_audit_extra(current_user, ticker),
             )
             PREDICTION_REQUESTS.labels(ticker=ticker, status="failure").inc()
-            raise HTTPException(status_code=500, detail="Erro interno no processamento da predição.")
+            raise HTTPException(status_code=500, detail="Internal error in prediction processing.")
+
+@router.post("/agent", response_model=AgentResponse)
+async def ask_financial_agent(
+    input_data: AgentInput,
+    current_user: UserResponse = Depends(get_current_user)
+):
+    """
+    Endpoint for interacting with the Financial Agent (RAG + Tools).
+    """
+    try:
+        agent = get_agent()
+        
+        # Executa o agente de forma assíncrona para não bloquear o worker da API
+        # Como o agente é síncrono internamente, usamos asyncio.to_thread
+        result = await asyncio.to_thread(agent.invoke, {"input": input_data.query})
+        
+        AGENT_REQUESTS.labels(status="success").inc()
+        
+        return AgentResponse(
+            answer=result["output"],
+            contexts=result.get("contexts", ["No context retrieved."])
+        )
+    except Exception as e:
+        logger.error(f"Erro at the agent: {e}")
+        AGENT_REQUESTS.labels(status="error").inc()
+        raise HTTPException(status_code=500, detail=f"Error in agent processing.: {str(e)}")
