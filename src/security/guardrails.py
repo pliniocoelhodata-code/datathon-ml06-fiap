@@ -1,82 +1,217 @@
-import logging
+"""Functional guardrails for input and output moderation."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
 import re
+import unicodedata
 
-from presidio_analyzer import AnalyzerEngine
-from presidio_anonymizer import AnonymizerEngine
+from src.security.pii_detection import PIIDetector
 
-logger = logging.getLogger(__name__)
+
+@dataclass(frozen=True)
+class GuardrailResult:
+    """Result returned by a guardrail evaluation."""
+
+    allowed: bool
+    reason: str
+    sanitized_text: str
+    detections: list[str] = field(default_factory=list)
 
 
 class InputGuardrail:
-    """Valida e sanitiza input do usuário antes de enviar ao LLM."""
+    """Validates and sanitizes user prompts before they reach the model."""
 
-    # Padrões comuns de prompt injection
-    INJECTION_PATTERNS = [
+    _OBFUSCATION_TRANSLATION = str.maketrans(
+        {
+            "0": "o",
+            "1": "i",
+            "3": "e",
+            "4": "a",
+            "5": "s",
+            "7": "t",
+            "@": "a",
+            "$": "s",
+            "!": "i",
+        }
+    )
+
+    _PROMPT_INJECTION_PATTERNS = (
         r"ignore\s+(all\s+)?previous\s+instructions",
-        r"you\s+are\s+now\s+a",
-        r"system:\s*",
-        r"<\|im_start\|>",
-        r"\[INST\]",
+        r"ignore\s+o\s+contexto\s+anterior",
         r"forget\s+(everything|all|your\s+instructions)",
-    ]
+        r"revele?\s+(o\s+)?prompt\s+do\s+sistema",
+        r"mostre?\s+(as\s+)?instru[cç][oõ]es\s+internas",
+        r"system\s*:",
+        r"<\|system\|>",
+        r"\[INST\]",
+    )
+    _DATA_EXFILTRATION_PATTERNS = (
+        r"(exporte|liste|retorne|mostre).*(cpf|e-?mail|telefone|api[_ -]?key|token)",
+        r"dump.*(base|dataset|documentos?)",
+        r"(mostre|retorne).*(segredo|secret|credencial|credential)",
+    )
+    _TOOL_ABUSE_PATTERNS = (
+        r"(execute|rode|run).*(shell|terminal|comando)",
+        r"(delete|apague|remova).*(arquivo|base|dataset)",
+        r"(curl|wget|powershell|cmd\.exe|bash)",
+    )
 
-    def __init__(self, allowed_topics: list[str] | None = None):
-        self.allowed_topics = allowed_topics or []
-        self._compiled_patterns = [
-            re.compile(p, re.IGNORECASE) for p in self.INJECTION_PATTERNS
-        ]
+    def __init__(
+        self,
+        max_chars: int = 1_500,
+        redact_pii: bool = True,
+        allowed_topics: tuple[str, ...] | None = None,
+    ) -> None:
+        self.max_chars = max_chars
+        self.redact_pii = redact_pii
+        self.allowed_topics = tuple(topic.lower() for topic in allowed_topics or ())
+        self.pii_detector = PIIDetector()
+        self._prompt_patterns = self._compile(self._PROMPT_INJECTION_PATTERNS)
+        self._exfiltration_patterns = self._compile(self._DATA_EXFILTRATION_PATTERNS)
+        self._tool_patterns = self._compile(self._TOOL_ABUSE_PATTERNS)
 
-    def validate(self, user_input: str) -> tuple[bool, str]:
-        """Valida input do usuário.
+    def evaluate(self, user_input: str) -> GuardrailResult:
+        """Returns a decision for the provided user input."""
+        text = user_input.strip()
+        if not text:
+            return GuardrailResult(False, "Input vazio.", "")
 
-        Args:
-            user_input: Texto do usuário.
+        normalized_text = self._normalize_for_security_checks(text)
 
-        Returns:
-            Tupla (is_valid, reason).
-        """
-        # Check 1: Prompt injection detection
-        for pattern in self._compiled_patterns:
-            if pattern.search(user_input):
-                logger.warning("Prompt injection detectado: %s", user_input[:100])
-                return False, "Input bloqueado: padrão suspeito detectado."
+        if len(text) > self.max_chars:
+            return GuardrailResult(
+                False,
+                f"Input bloqueado por excesso de tamanho (> {self.max_chars} caracteres).",
+                "",
+                ["context_stuffing"],
+            )
 
-        # Check 2: Tamanho máximo (evitar context stuffing)
-        if len(user_input) > 4096:
-            return False, "Input bloqueado: excede tamanho máximo (4096 chars)."
+        if self._matches(normalized_text, self._prompt_patterns):
+            return GuardrailResult(
+                False,
+                "Input bloqueado por tentativa de prompt injection ou vazamento de instrucoes.",
+                "",
+                ["prompt_injection"],
+            )
 
-        return True, "OK"
+        if self._matches(normalized_text, self._exfiltration_patterns):
+            return GuardrailResult(
+                False,
+                "Input bloqueado por tentativa de exfiltracao de dados sensiveis.",
+                "",
+                ["data_exfiltration"],
+            )
+
+        if self._matches(normalized_text, self._tool_patterns):
+            return GuardrailResult(
+                False,
+                "Input bloqueado por tentativa de abuso de ferramentas ou comandos.",
+                "",
+                ["tool_abuse"],
+            )
+
+        sanitized_text = text
+        detections: list[str] = []
+        if self.redact_pii and self.pii_detector.has_pii(text):
+            sanitized_text = self.pii_detector.redact(text)
+            detections.append("pii_redacted")
+
+        if self.allowed_topics and not any(topic in sanitized_text.lower() for topic in self.allowed_topics):
+            return GuardrailResult(
+                False,
+                "Input fora do escopo configurado para o assistente.",
+                "",
+                ["out_of_scope"],
+            )
+
+        return GuardrailResult(True, "OK", sanitized_text, detections)
+
+    @staticmethod
+    def _compile(patterns: tuple[str, ...]) -> tuple[re.Pattern[str], ...]:
+        return tuple(re.compile(pattern, flags=re.IGNORECASE | re.DOTALL) for pattern in patterns)
+
+    @staticmethod
+    def _matches(text: str, patterns: tuple[re.Pattern[str], ...]) -> bool:
+        return any(pattern.search(text) for pattern in patterns)
+
+    @classmethod
+    def _normalize_for_security_checks(cls, text: str) -> str:
+        """Normalizes text before regex checks to catch simple obfuscation."""
+        normalized = unicodedata.normalize("NFKD", text)
+        normalized = "".join(char for char in normalized if not unicodedata.combining(char))
+        normalized = normalized.lower().translate(cls._OBFUSCATION_TRANSLATION)
+        normalized = re.sub(r"[\W_]+", " ", normalized)
+        return re.sub(r"\s+", " ", normalized).strip()
 
 
 class OutputGuardrail:
-    """Valida e sanitiza output do LLM antes de retornar ao usuário."""
+    """Sanitizes and validates model responses before returning them."""
 
-    def __init__(self, language: str = "pt"):
-        self.analyzer = AnalyzerEngine()
-        self.anonymizer = AnonymizerEngine()
-        self.language = language
+    _LEAKAGE_PATTERNS = (
+        r"(prompt\s+do\s+sistema|system\s+prompt|instru[cç][oõ]es\s+internas)",
+        r"(api[_ -]?key|token|secret|credencial)",
+        r"(conte[uú]do\s+integral\s+da\s+base|dump\s+completo)",
+    )
+    _UNSAFE_FINANCE_PATTERNS = (
+        r"(lucro|retorno)\s+garantido",
+        r"compre\s+agora\s+sem\s+risco",
+        r"venda\s+tudo\s+agora",
+        r"invista\s+todo\s+o\s+capital",
+    )
 
-    def sanitize(self, llm_output: str) -> str:
-        """Remove PII do output do LLM.
+    def __init__(self, redact_pii: bool = True) -> None:
+        self.redact_pii = redact_pii
+        self.pii_detector = PIIDetector()
+        self._leakage_patterns = InputGuardrail._compile(self._LEAKAGE_PATTERNS)
+        self._unsafe_finance_patterns = InputGuardrail._compile(self._UNSAFE_FINANCE_PATTERNS)
 
-        Args:
-            llm_output: Texto gerado pelo LLM.
+    def evaluate(self, llm_output: str) -> GuardrailResult:
+        """Returns a safe, sanitized response when possible."""
+        text = llm_output.strip()
+        if not text:
+            return GuardrailResult(False, "Saida vazia.", "")
 
-        Returns:
-            Texto sanitizado.
-        """
-        results = self.analyzer.analyze(
-            text=llm_output,
-            language=self.language,
-            entities=["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER", "BR_CPF"],
-        )
-
-        if results:
-            logger.warning("PII detectado no output: %d entidades", len(results))
-            anonymized = self.anonymizer.anonymize(
-                text=llm_output,
-                analyzer_results=results,
+        if InputGuardrail._matches(text, self._leakage_patterns):
+            return GuardrailResult(
+                False,
+                "Saida bloqueada por conter indicio de vazamento de instrucoes ou segredos.",
+                "",
+                ["sensitive_leakage"],
             )
-            return anonymized.text
 
-        return llm_output
+        if InputGuardrail._matches(text, self._unsafe_finance_patterns):
+            return GuardrailResult(
+                False,
+                "Saida bloqueada por linguagem de recomendacao financeira indevida.",
+                "",
+                ["unsafe_financial_advice"],
+            )
+
+        sanitized_text = text
+        detections: list[str] = []
+        if self.redact_pii and self.pii_detector.has_pii(text):
+            sanitized_text = self.pii_detector.redact(text)
+            detections.append("pii_redacted")
+
+        return GuardrailResult(True, "OK", sanitized_text, detections)
+
+
+class GuardrailService:
+    """Convenience facade for request/response protection."""
+
+    def __init__(
+        self,
+        input_guardrail: InputGuardrail | None = None,
+        output_guardrail: OutputGuardrail | None = None,
+    ) -> None:
+        self.input_guardrail = input_guardrail or InputGuardrail()
+        self.output_guardrail = output_guardrail or OutputGuardrail()
+
+    def secure_exchange(self, user_input: str, llm_output: str) -> tuple[GuardrailResult, GuardrailResult]:
+        """Evaluates a full request/response exchange."""
+        input_result = self.input_guardrail.evaluate(user_input)
+        if not input_result.allowed:
+            return input_result, GuardrailResult(False, "Saida nao avaliada.", "")
+        output_result = self.output_guardrail.evaluate(llm_output)
+        return input_result, output_result
