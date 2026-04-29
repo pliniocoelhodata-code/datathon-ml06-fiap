@@ -77,6 +77,18 @@ uv run make test
 
 > Em Ubuntu/WSL (PEP 668), evite `make install` fora de um virtualenv, pois ele usa `pip` global e pode falhar com `externally-managed-environment`.
 
+#### Requisitos para a RAG
+
+Download do Ollama no host ollama.com/download
+
+```bash
+# download do modelo
+ollama pull mxbai-embed-large
+
+# seviço local
+http://localhost:11434
+```
+
 ### 2. Desenvolvimento Local
 
 #### Treinamento do Modelo
