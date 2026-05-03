@@ -47,8 +47,9 @@ evaluation = [
 ]
 # src/security/guardrails.py
 security = [
-    "presidio-analyzer>=2.2",
-    "presidio-anonymizer>=2.2",
+    # Guardrails work with the built-in regex fallback by default.
+    # Presidio is kept out of this extra because its latest anonymizer requires
+    # cryptography>=46, which conflicts with dvc-gdrive/pydrive2.
 ]
 # Módulos src/agent/* (stubs — quando implementar)
 agent = [

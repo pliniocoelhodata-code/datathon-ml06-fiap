@@ -1,17 +1,44 @@
 from langchain.tools import tool
+
 from src.agent.rag_pipeline import RAGPipeline
-import os
+from src.monitoring.metrics import PII_REDACTIONS, RAG_CONTEXT_GUARDRAIL_EVENTS
+from src.security.guardrails import InputGuardrail
 
 rag_internal = RAGPipeline()
+context_guardrail = InputGuardrail(max_chars=5_000)
+
+
+def _record_rag_guardrail(action: str, detections: list[str]) -> None:
+    for detection in detections or ["none"]:
+        RAG_CONTEXT_GUARDRAIL_EVENTS.labels(action=action, detection=detection).inc()
+
+
+def _secure_market_context(query: str) -> str:
+    context = rag_internal.get_context(query)
+    guardrail_result = context_guardrail.evaluate(context)
+    if not guardrail_result.allowed:
+        _record_rag_guardrail("blocked", guardrail_result.detections)
+        return (
+            "Contexto recuperado bloqueado pelos guardrails de seguranca "
+            f"antes de chegar ao modelo. Motivo: {guardrail_result.reason}"
+        )
+
+    if "pii_redacted" in guardrail_result.detections:
+        PII_REDACTIONS.labels(surface="rag_context").inc()
+        _record_rag_guardrail("sanitized", guardrail_result.detections)
+
+    return guardrail_result.sanitized_text
+
 
 @tool
 def search_market_knowledge(query: str) -> str:
     """
     Consulta a base de conhecimento interna sobre mercado financeiro.
     Útil para: Análise Técnica, Fundamentalista, Macroeconomia, Commodities e Eventos Corporativos.
-    Sempre use esta ferramenta quando a pergunta envolver conceitos técnicos ou dados históricos específicos.
+    Sempre use esta ferramenta quando a pergunta envolver conceitos técnicos ou dados
+    históricos específicos.
     """
-    return rag_internal.get_context(query)
+    return _secure_market_context(query)
 
 @tool
 def get_stock_prediction(symbol: str) -> str:
@@ -19,7 +46,7 @@ def get_stock_prediction(symbol: str) -> str:
     Acessa o modelo de ML (LSTM) para prever a tendência de fechamento de uma ação.
     Input deve ser o ticker da ação (ex: PETR4, VALE3).
     """
-    # this is where the logic for loading the model from src/models/ and making the prediction comes in.
+    # Placeholder until the real model-serving path is wired into the agent tools.
     return f"A tendência prevista para {symbol} é de estabilidade com viés de alta (Simulação)."
 
 @tool

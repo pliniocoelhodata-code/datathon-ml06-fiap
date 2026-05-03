@@ -1,38 +1,67 @@
 import asyncio
+import time
+from datetime import datetime
+from pathlib import Path
+from uuid import uuid4
+
 import joblib
 import pandas as pd
-import numpy as np
-import os
-from pathlib import Path
-from datetime import datetime
-from uuid import uuid4
-from tensorflow.keras.models import load_model
-from fastapi import APIRouter, HTTPException, Depends
-from prometheus_client import Counter, Histogram, Gauge
-
-from src.common.logging_setup import setup_logging
-from src.serving.core.security import get_current_user
-from src.serving.schemas.prediction import PredictionInput, AgentInput, AgentResponse
-from src.serving.schemas.user import UserResponse
-from src.monitoring.metrics import PREDICTION_REQUESTS, PREDICTION_LATENCY, LAST_PREDICTED_PRICE
+from fastapi import APIRouter, Depends, HTTPException
 from src.agent.react_agent import get_financial_agent
+from src.common.logging_setup import setup_logging
+from src.monitoring.metrics import (
+    AGENT_LATENCY,
+    AGENT_REQUESTS,
+    GUARDRAIL_EVENTS,
+    LAST_PREDICTED_PRICE,
+    PII_REDACTIONS,
+    PREDICTION_LATENCY,
+    PREDICTION_REQUESTS,
+)
+from src.security.guardrails import GuardrailResult, InputGuardrail, OutputGuardrail
+from src.serving.core.security import get_current_user
+from src.serving.schemas.prediction import AgentInput, AgentResponse, PredictionInput
+from src.serving.schemas.user import UserResponse
+from tensorflow.keras.models import load_model
 
 logger = setup_logging(__name__)
 
-AGENT_REQUESTS = Counter(
-    "agent_requests_total", 
-    "Total number of requests to the Financial Agent", 
-    ["status"]
-)
-
 # Singleton for the agent to avoid reloading the model on each request.
 _agent = None
+_input_guardrail = InputGuardrail()
+_output_guardrail = OutputGuardrail()
+
 
 def get_agent():
     global _agent
     if _agent is None:
         _agent = get_financial_agent()
     return _agent
+
+
+def _record_guardrail_result(stage: str, action: str, result: GuardrailResult) -> None:
+    detections = result.detections or ("none",)
+    for detection in detections:
+        GUARDRAIL_EVENTS.labels(stage=stage, action=action, detection=detection).inc()
+
+
+def _redact_contexts(contexts: list[str] | str | None) -> list[str]:
+    if contexts is None:
+        contexts = ["No context retrieved."]
+    elif isinstance(contexts, str):
+        contexts = [contexts]
+
+    safe_contexts = []
+    for context in contexts:
+        text = str(context)
+        safe_text = _output_guardrail.pii_detector.redact(text)
+        if safe_text != text:
+            PII_REDACTIONS.labels(surface="context").inc()
+            GUARDRAIL_EVENTS.labels(
+                stage="context", action="sanitized", detection="pii_redacted"
+            ).inc()
+        safe_contexts.append(safe_text)
+    return safe_contexts
 
 router = APIRouter()
 
@@ -76,7 +105,7 @@ except Exception as e:
 def load_ticker_scalers(ticker: str):
     ticker = ticker.upper()
     ticker_dir = ML_MODELS_DIR / ticker
-    
+
     feat_path = ticker_dir / f'scaler_features_{ticker}.pkl'
     targ_path = ticker_dir / f'scaler_target_{ticker}.pkl'
 
@@ -107,10 +136,10 @@ def predict_stock_price(
     current_user: UserResponse = Depends(get_current_user)
 ):
     """
-    Receives a 30-day window of OHLCV data, applies feature engineering, and returns the predicted price for the requested ticker.
+    Receives a 30-day OHLCV window and returns the predicted price for the ticker.
     """
     ticker = input_data.ticker.upper()
-    
+
     with PREDICTION_LATENCY.time():
         try:
             if model is None:
@@ -131,8 +160,11 @@ def predict_stock_price(
                     extra=_prediction_audit_extra(current_user, ticker),
                 )
                 raise HTTPException(
-                    status_code=404, 
-                    detail=f"Ticker {ticker} not supported. Choose from: AAPL, MSFT, GOOGL, DIS, AMZN, TSLA, META, NFLX"
+                    status_code=404,
+                    detail=(
+                        f"Ticker {ticker} not supported. Choose from: "
+                        "AAPL, MSFT, GOOGL, DIS, AMZN, TSLA, META, NFLX"
+                    ),
                 )
 
             # Validação de Input (30 dias / 5 features)
@@ -142,11 +174,14 @@ def predict_stock_price(
                     "Invalid payload for prediction.",
                     extra=_prediction_audit_extra(current_user, ticker),
                 )
-                raise HTTPException(status_code=400, detail="Data should contain exactly 30 days with 5 features each.")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Data should contain exactly 30 days with 5 features each.",
+                )
 
             # Engenharia de Features (Fase 02)
             df = pd.DataFrame(input_data.data, columns=['Open', 'High', 'Low', 'Close', 'Volume'])
-            
+
             df['SMA_10'] = df['Close'].rolling(window=10).mean()
             df['SMA_20'] = df['Close'].rolling(window=20).mean()
             df['EMA_10'] = df['Close'].ewm(span=10, adjust=False).mean()
@@ -155,27 +190,27 @@ def predict_stock_price(
             # Tratamento de nulos pós-janelamento
             df.ffill(inplace=True)
             df.bfill(inplace=True)
-            
+
             window_data = df.tail(30)
             _save_request_for_drift(ticker, window_data)
-            
+
             # Seleciona apenas as 5 colunas originais para o scaler e modelo
             original_columns = ['Open', 'High', 'Low', 'Close', 'Volume']
             window_data_filtered = window_data[original_columns]
-            
+
             # Escalonamento e Predição
             data_scaled = scaler_features.transform(window_data_filtered.values)
             data_scaled = data_scaled.reshape(1, 30, 5) # Ajustado para 5 features
-            
+
             prediction_scaled = model.predict(data_scaled, verbose=0)
             prediction = scaler_target.inverse_transform(prediction_scaled.reshape(-1, 1))
-            
+
             final_price = float(f"{prediction[0][0]:.2f}")
 
             # 3. Atualizando métricas de sucesso
             PREDICTION_REQUESTS.labels(ticker=ticker, status="success").inc()
             LAST_PREDICTED_PRICE.labels(ticker=ticker).set(final_price)
-            
+
             logger.info(
                 "Prediction successfully completed.",
                 extra=_prediction_audit_extra(
@@ -203,20 +238,70 @@ async def ask_financial_agent(
     """
     Endpoint for interacting with the Financial Agent (RAG + Tools).
     """
+    started_at = time.perf_counter()
     try:
+        input_guardrail_result = _input_guardrail.evaluate(input_data.query)
+        if not input_guardrail_result.allowed:
+            AGENT_REQUESTS.labels(status="blocked_input").inc()
+            _record_guardrail_result("input", "blocked", input_guardrail_result)
+            logger.warning(
+                "Agent input blocked by guardrail.",
+                extra={
+                    "user_id": str(current_user.id),
+                    "detections": input_guardrail_result.detections,
+                },
+            )
+            raise HTTPException(status_code=400, detail=input_guardrail_result.reason)
+
+        if "pii_redacted" in input_guardrail_result.detections:
+            PII_REDACTIONS.labels(surface="input").inc()
+            _record_guardrail_result("input", "sanitized", input_guardrail_result)
+
         agent = get_agent()
-        
+
         # Executa o agente de forma assíncrona para não bloquear o worker da API
         # Como o agente é síncrono internamente, usamos asyncio.to_thread
-        result = await asyncio.to_thread(agent.invoke, {"input": input_data.query})
-        
-        AGENT_REQUESTS.labels(status="success").inc()
-        
-        return AgentResponse(
-            answer=result["output"],
-            contexts=result.get("contexts", ["No context retrieved."])
+        result = await asyncio.to_thread(
+            agent.invoke,
+            {"input": input_guardrail_result.sanitized_text},
         )
+
+        output_guardrail_result = _output_guardrail.evaluate(result["output"])
+        if not output_guardrail_result.allowed:
+            AGENT_REQUESTS.labels(status="blocked_output").inc()
+            _record_guardrail_result("output", "blocked", output_guardrail_result)
+            logger.warning(
+                "Agent output blocked by guardrail.",
+                extra={
+                    "user_id": str(current_user.id),
+                    "detections": output_guardrail_result.detections,
+                },
+            )
+            raise HTTPException(status_code=502, detail=output_guardrail_result.reason)
+
+        if "pii_redacted" in output_guardrail_result.detections:
+            PII_REDACTIONS.labels(surface="output").inc()
+            _record_guardrail_result("output", "sanitized", output_guardrail_result)
+
+        safe_contexts = _redact_contexts(result.get("contexts"))
+
+        AGENT_REQUESTS.labels(status="success").inc()
+
+        return AgentResponse(
+            answer=output_guardrail_result.sanitized_text,
+            contexts=safe_contexts,
+        )
+    except HTTPException:
+        raise
     except Exception as e:
-        logger.error(f"Erro at the agent: {e}")
+        logger.error(
+            "Agent processing failed.",
+            extra={
+                "user_id": str(current_user.id),
+                "error_type": type(e).__name__,
+            },
+        )
         AGENT_REQUESTS.labels(status="error").inc()
-        raise HTTPException(status_code=500, detail=f"Error in agent processing.: {str(e)}")
+        raise HTTPException(status_code=500, detail="Error in agent processing.")
+    finally:
+        AGENT_LATENCY.observe(time.perf_counter() - started_at)

@@ -1,0 +1,221 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [
+    {
+      "asDropdown": true,
+      "icon": "external link",
+      "includeVars": true,
+      "keepTime": true,
+      "tags": ["mlops", "datathon"],
+      "targetBlank": false,
+      "title": "Related dashboards",
+      "type": "dashboards"
+    }
+  ],
+  "liveNow": false,
+  "panels": [
+    {
+      "title": "Agent requests by status",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (status) (increase(agent_requests_total[1h]))",
+          "legendFormat": "{{status}}",
+          "refId": "A"
+        }
+      ],
+      "description": "Distribution of successful, blocked and failed /agent requests in the last hour."
+    },
+    {
+      "title": "Guardrail block rate",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "(sum(rate(agent_requests_total{status=~\"blocked_input|blocked_output\"}[5m])) / sum(rate(agent_requests_total[5m]))) * 100",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "max": 100,
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 5 },
+              { "color": "red", "value": 20 }
+            ]
+          }
+        }
+      },
+      "description": "Share of /agent requests blocked by input or output guardrails."
+    },
+    {
+      "title": "Agent latency",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "rate(agent_duration_seconds_sum[5m]) / rate(agent_duration_seconds_count[5m])",
+          "legendFormat": "avg",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, rate(agent_duration_seconds_bucket[5m]))",
+          "legendFormat": "p95",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 3 },
+              { "color": "red", "value": 8 }
+            ]
+          }
+        }
+      },
+      "description": "Average and p95 latency for the financial agent endpoint."
+    },
+    {
+      "title": "Guardrail events by detection",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (stage, action, detection) (increase(guardrail_events_total[1h]))",
+          "legendFormat": "{{stage}} / {{action}} / {{detection}}",
+          "refId": "A"
+        }
+      ],
+      "description": "Input, output and context guardrail activity grouped by detection type."
+    },
+    {
+      "title": "PII redactions by surface",
+      "type": "barchart",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (surface) (increase(pii_redactions_total[24h]))",
+          "legendFormat": "{{surface}}",
+          "refId": "A"
+        }
+      ],
+      "description": "PII redactions in input, output, returned contexts and RAG context over 24 hours."
+    },
+    {
+      "title": "RAG context guardrail events",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (action, detection) (increase(rag_context_guardrail_events_total[1h]))",
+          "legendFormat": "{{action}} / {{detection}}",
+          "refId": "A"
+        }
+      ],
+      "description": "Security events detected in retrieved RAG context before it reaches the LLM."
+    },
+    {
+      "title": "Prompt injection attempts",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(increase(guardrail_events_total{detection=\"prompt_injection\"}[24h])) + sum(increase(rag_context_guardrail_events_total{detection=\"prompt_injection\"}[24h]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 5 },
+              { "color": "red", "value": 20 }
+            ]
+          }
+        }
+      },
+      "description": "Prompt injection attempts detected in user input or retrieved RAG context in 24 hours."
+    },
+    {
+      "title": "Unsafe financial advice blocked",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum(increase(guardrail_events_total{stage=\"output\", action=\"blocked\", detection=\"unsafe_financial_advice\"}[24h]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      },
+      "description": "Outputs blocked for deterministic or unsafe financial recommendation language."
+    },
+    {
+      "title": "Security events table",
+      "type": "table",
+      "gridPos": { "h": 9, "w": 24, "x": 0, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        {
+          "expr": "sum by (stage, action, detection) (increase(guardrail_events_total[24h]))",
+          "instant": true,
+          "legendFormat": "{{stage}} / {{action}} / {{detection}}",
+          "refId": "A"
+        }
+      ],
+      "description": "Tabular view of guardrail events over the last 24 hours for audit review."
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["mlops", "datathon", "security", "governance", "lgpd"],
+  "title": "Datathon ML - Security & Governance",
+  "uid": "ml_security_governance_dashboard",
+  "version": 1
+}
