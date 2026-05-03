@@ -56,6 +56,9 @@ model_psi{model_name="stock_lstm_v1"} 0.08
 2. Use queries como:
    - `rate(prediction_requests_total[5m])` - Taxa de requests
    - `histogram_quantile(0.95, rate(prediction_duration_seconds_bucket[5m]))` - Latência p95
+   - `sum by (stage, action, detection) (increase(guardrail_events_total[1h]))` - Eventos de guardrail
+   - `sum by (surface) (increase(pii_redactions_total[24h]))` - Redações de PII
+   - `sum by (action, detection) (increase(rag_context_guardrail_events_total[1h]))` - Segurança em contexto RAG
 
 #### Via API
 ```bash
@@ -73,8 +76,8 @@ curl "http://localhost:9090/api/v1/query?query=up"
 ### Acesso Inicial
 - **URL**: http://localhost:3000
 - **Usuário**: admin
-- **Senha**: admin
-- **Primeiro acesso**: Será solicitado mudança de senha
+- **Senha**: admin123
+- **Observação**: se o Grafana já tiver sido iniciado antes, a senha alterada pela interface fica salva no volume local `grafana_data`. Para novos ambientes, o `docker-compose.yml` usa `admin/admin123` por padrão, podendo ser sobrescrito por `GRAFANA_ADMIN_USER` e `GRAFANA_ADMIN_PASSWORD`.
 
 ### Dashboards Disponíveis
 
@@ -100,6 +103,17 @@ curl "http://localhost:9090/api/v1/query?query=up"
   - Disk usage por container
   - Network I/O (RX/TX)
   - Container logs (excluindo métricas/health)
+
+#### 3. **Security & Governance Dashboard** (`ml_security_governance_dashboard`)
+**Foco**: controles da Etapa 4 no endpoint `/agent`, guardrails, LGPD e RAG seguro
+- **Métricas**:
+  - Requests do agente por status
+  - Latência do agente
+  - Taxa de bloqueio por guardrail de entrada ou saída
+  - Eventos de guardrail por etapa, ação e detecção
+  - Redações de PII por superfície: input, output, context e rag_context
+  - Eventos de segurança em contexto RAG antes de chegar ao LLM
+  - Tabela de eventos de segurança das últimas 24 horas
 
 ### Criando Novos Dashboards
 
@@ -315,5 +329,4 @@ Para questões sobre observabilidade:
 1. Verifique logs dos containers: `docker compose logs [service]`
 2. Consulte métricas em tempo real no Prometheus
 3. Visualize dashboards no Grafana
-4. Documente issues no repositório</content>
-<parameter name="filePath">\\wsl.localhost\Ubuntu\home\anacaroline\\datathon-ml06-fiap\\docs\\MONITORING_README.md
+4. Documente issues no repositório

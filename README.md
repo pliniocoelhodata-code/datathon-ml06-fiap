@@ -33,7 +33,7 @@ Utilizamos o framework **RAGAS** para medir a precisão do sistema em quatro pil
 ## 📊 Observabilidade Completa
 
 - **MLflow**: Tracking de experimentos, métricas de modelo e artefatos
-- **Prometheus + Grafana**: Dashboards de métricas operacionais e de negócio
+- **Prometheus + Grafana**: Dashboards de métricas operacionais, de negócio e de segurança
 - **Drift Detection**: Monitoramento automático de data drift e prediction drift
 - **Logs Centralizados**: Loki para agregação e análise de logs
 
@@ -133,7 +133,7 @@ make docker-api-run
 |---------|-----|-----------|
 | **API FastAPI** | http://localhost:8000/docs | Documentação Swagger da API de predições |
 | **MLflow UI** | http://localhost:5000 | Tracking de experimentos e modelos |
-| **Grafana** | http://localhost:3000 | Dashboards: Business Metrics & Infrastructure (user: admin, pass: admin) |
+| **Grafana** | http://localhost:3000 | Dashboards: Business Metrics, Infrastructure e Security & Governance (user: admin, pass: admin123) |
 | **Prometheus** | http://localhost:9090 | Consulta de métricas operacionais |
 
 ---
@@ -189,6 +189,7 @@ Dados Brutos → Feature Engineering → Treino (MLflow) → API → Monitoramen
 - Latência de predições
 - Taxa de erro por endpoint
 - Uso de recursos
+- Eventos de guardrails, bloqueios e redações de PII no fluxo do agente
 
 ### Drift Detection
 - Population Stability Index (PSI)
@@ -203,12 +204,13 @@ Dados Brutos → Feature Engineering → Treino (MLflow) → API → Monitoramen
 - **PII Detection**: Identificação automática de dados sensíveis
 - **Rate Limiting**: Controle de uso da API
 - **OWASP Compliance**: Mitigação de 5+ ameaças LLM
+- **Security Dashboard**: Painel Grafana `Datathon ML - Security & Governance`
 
 ---
 
 ## 📚 Documentação Adicional
 
-- [Model Card](docs/MODEL_CARD.md): Detalhes do modelo LSTM
+- [System Model](docs/SYSTEM_MODEL.md): Detalhes do modelo LSTM
 - [System Card](docs/SYSTEM_CARD.md): Arquitetura completa
 - [LGPD Plan](docs/LGPD_PLAN.md): Conformidade de dados
 - [OWASP Mapping](docs/OWASP_MAPPING.md): Segurança LLM
