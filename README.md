@@ -77,6 +77,25 @@ uv run make test
 
 > Em Ubuntu/WSL (PEP 668), evite `make install` fora de um virtualenv, pois ele usa `pip` global e pode falhar com `externally-managed-environment`.
 
+### Dados e DVC
+
+O dataset principal é versionado com DVC em `data/raw/stock_data.csv.dvc`. O arquivo CSV real usado pelo app fica em `data/raw/stock_data.csv`, mas ele não é versionado diretamente pelo Git.
+
+Remote de leitura do dataset:
+
+```text
+https://drive.google.com/drive/folders/1fuibMil4oEUkvbYiB4ULaxPnPmbdF_mw?usp=drive_link
+```
+
+Para ambientes novos, baixe ou sincronize essa pasta pelo Google Drive Desktop e configure o caminho local como remote DVC:
+
+```bash
+dvc remote add -d localdrive "<CAMINHO_LOCAL_DA_PASTA_SINCRONIZADA>"
+dvc pull
+```
+
+O projeto não acessa automaticamente o link web do Google Drive durante a execução. O `dvc pull` precisa de um remote local configurado ou do arquivo `data/raw/stock_data.csv` já presente na pasta do projeto.
+
 #### Requisitos para a RAG
 
 Download do Ollama no host ollama.com/download
