@@ -23,17 +23,21 @@ venv/
 # MLflow e Experimentos
 mlruns/
 mlflow.db
+logs/
 
 # Artefatos de Modelos e Imagens geradas
 models/*.keras
 models/*.pkl
 models/images/
+data/models/**/*.keras
+data/models/**/*.pkl
 
 # Ignora os arquivos de dados reais, mas permite as pastas e arquivos .dvc
 data/raw/*.csv
 data/processed/*.csv
 data/golden_set/*.csv
 data/models/*.pkl
+data/monitoring/*.csv
 
 # Garante que arquivos de controle do DVC NUNCA sejam ignorados
 !*.dvc
